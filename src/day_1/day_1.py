@@ -1,44 +1,46 @@
+from src.day_1 import load_input
 from src.prelude import *
 
 log = setup_logger(__file__)
-dir = Path(__file__).parent
 
 
-def load_input(name="input.txt"):
-    with dir.joinpath(name).open() as src:
-        numbers = src.read().split("\n")
-        numbers = list(map(int, numbers))
-        log.debug(f"{len(numbers)} numbers read")
+class Day1(Problem):
+    day = 1
 
-    return numbers, len(numbers)
+    def load_input(self):
+        xs = [int(x) for x in self.lines]
+        log.debug(f"{len(xs)} numbers read")
+        return xs, len(xs)
 
 
-def part_1(target=2020):
+class Part1(Day1):
+    def solve():
 
-    numbers, n = load_input()
+        numbers, n = self.load_input()
 
-    model = f"""
-    set of int: INDEX = 1 .. {n};
-    
-    array[INDEX] of int: xs;
-    int: target;
+        model = f"""
+        int: N;
+        set of int: INDEX = 1 .. N;
+                
+        array[INDEX] of int: xs;
+        int: target;
 
-    var INDEX: i;
-    var INDEX: j;
-    
-    var int: a;
-    var int: b;
+        var INDEX: i;
+        var INDEX: j;
+        
+        var int: a;
+        var int: b;
 
-    constraint a = xs[i];
-    constraint b = xs[j];
-    constraint a + b = target;
+        constraint a = xs[i];
+        constraint b = xs[j];
+        constraint a + b = target;
 
-    """
+        """
 
-    sol = solve_model(model, xs=numbers, target=target)
-    answer = sol.a * sol.b
-    log.info(f"part_1 = {answer}")
-    return answer
+        sol = solve_model(model, xs=numbers, target=target)
+        answer = sol.a * sol.b
+        log.info(f"part_1 = {answer}")
+        return answer
 
 
 def part_2(target=2020):

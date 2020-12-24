@@ -1,23 +1,33 @@
-from os import X_OK
-import attr
-from logzero import setup_logger
-from typing import Dict, List, Optional, Generator, Generic, TypeVar, Any, Union
-from pendulum import (
-    DateTime,
-    Duration,
-    Period,
-    Date,
-    duration,
-    datetime,
-    period,
-    date,
-    now,
-)
-from pendulum.tz.timezone import UTC, Timezone
-import pendulum as pn
 import datetime as dt
 from functools import partial
 from pathlib import Path
+from typing import (
+    Any,
+    Dict,
+    Generator,
+    Generic,
+    List,
+    Optional,
+    TypeVar,
+    Union,
+    Callable,
+)
+
+import attr
+import pendulum as pn
+from logzero import setup_logger
+from pendulum import (
+    Date,
+    DateTime,
+    Duration,
+    Period,
+    date,
+    datetime,
+    duration,
+    now,
+    period,
+)
+from pendulum.tz.timezone import UTC, Timezone
 
 log = setup_logger("app")
 
@@ -195,9 +205,56 @@ def to_mid(x) -> DateTime:
     return p.start.add(seconds=p.total_seconds() / 2)
 
 
-def opt(f):
+def opt(f: Callable[..., T]) -> Callable[..., Optional[T]]:
     def inner(arg):
         if arg is None:
             return None
         else:
             return f(arg)
+
+    return inner
+
+
+root = Path(__file__).parent.parent
+
+
+@attr.s
+class Problem:
+    """ Helpers for a given Day/Problem """
+
+    # fmt: off
+    day  : int = attr.ib(default = 1)
+    part : int = attr.ib(default = 1)
+    # fmt: on
+
+    @property
+    def day_name(self):
+        return f"day_{self.day}"
+
+    @property
+    def part_name(self):
+        return f"part_{self.part}"
+
+    @property
+    def name(self):
+        return f"{self.day_name}_{self.part_name}"
+
+    @property
+    def dir(self) -> Path:
+        return root / self.day_name
+
+    @property
+    def input(self) -> Path:
+        return self.dir / "input.txt"
+
+    @property
+    def lines(self):
+        with self.input_file.open("r") as src:
+            for line in src.read().split("\n"):
+                yield line
+
+    def __str__(self):
+        return self.name
+
+    def __repr__(self):
+        return f"<{self!s}>"
