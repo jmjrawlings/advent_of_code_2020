@@ -1,16 +1,20 @@
+import asyncio
 import datetime as dt
+import string
+from abc import ABC, abstractmethod
 from functools import partial
 from pathlib import Path
 from typing import (
     Any,
+    Callable,
     Dict,
     Generator,
     Generic,
     List,
     Optional,
+    Type,
     TypeVar,
     Union,
-    Callable,
 )
 
 import attr
@@ -61,7 +65,7 @@ def to_dur(*args, **kwargs) -> Duration:
         raise ValueError(f"Cannot make duration from {args} and {kwargs}")
 
 
-def fmt_int(n: int, single, multi, none=""):
+def fmt_int(n: int, single, multi, none="") -> str:
     """ Format int """
     if n == 0:
         return none
@@ -117,7 +121,6 @@ def to_elapsed(obj: Any) -> str:
 
 def to_datetime(value, tz=UTC, warn_on_convert=True) -> DateTime:
     """ Convert the given value to a DateTime if possible """
-    val: DateTime = None
 
     if isinstance(value, DateTime):
         val = value
@@ -132,7 +135,10 @@ def to_datetime(value, tz=UTC, warn_on_convert=True) -> DateTime:
         parsed = pn.parse(value, tz=tz)
         return to_datetime(parsed, tz, warn_on_convert)
 
-    ret = val.in_tz(tz).replace(microsecond=0)
+    else:
+        raise ValueError(f"Could not convert {value} to datetime")
+
+    ret = val.in_tz(tz)
 
     if not val.tz or (val.offset_hours != ret.offset_hours):
         if warn_on_convert:
@@ -218,38 +224,69 @@ def opt(f: Callable[..., T]) -> Callable[..., Optional[T]]:
 root = Path(__file__).parent.parent
 
 
-@attr.s
-class Problem:
-    """ Helpers for a given Day/Problem """
+class Problem(ABC, Generic[T]):
+    """ An problem for the given Day/Part """
 
-    # fmt: off
-    day  : int = attr.ib(default = 1)
-    part : int = attr.ib(default = 1)
-    # fmt: on
+    day = 0
+    part = 0
 
-    @property
-    def day_name(self):
-        return f"day_{self.day}"
+    @classmethod
+    @abstractmethod
+    def load_data(cls, lines: List[str]) -> T:
+        """
+        Load the problem instance from the lines
+        of the input file
+        """
+        pass
 
-    @property
-    def part_name(self):
-        return f"part_{self.part}"
+    @classmethod
+    @abstractmethod
+    async def solve_data(cls, data: T):
+        """
+        Solve the problem instance given
+        the input data
+        """
+        pass
 
-    @property
-    def name(self):
-        return f"{self.day_name}_{self.part_name}"
+    @classmethod
+    def solve(cls: "Type[Problem[T]]"):
+        log.info(f"{cls.name()} started")
+        start_time = now()
 
-    @property
-    def dir(self) -> Path:
-        return root / self.day_name
+        lines = list(cls.read_lines())
+        data = cls.load_data(lines)
 
-    @property
-    def input(self) -> Path:
-        return self.dir / "input.txt"
+        log.info(f"{cls.name()} loaded {data!r} in {to_elapsed(now() - start_time)}")
 
-    @property
-    def lines(self):
-        with self.input_file.open("r") as src:
+        answer = asyncio.run(cls.solve_data(data))
+
+        log.info(f"{cls.name()} returned {answer} in {to_elapsed(now() - start_time)}")
+
+        return answer
+
+    @classmethod
+    def day_name(cls):
+        return f"day_{cls.day}"
+
+    @classmethod
+    def part_name(cls):
+        return f"part_{cls.part}"
+
+    @classmethod
+    def name(cls):
+        return f"{cls.day_name()}_{cls.part_name()}"
+
+    @classmethod
+    def dir(cls) -> Path:
+        return root / "src" / cls.day_name()
+
+    @classmethod
+    def input_file(cls) -> Path:
+        return cls.dir() / "input.txt"
+
+    @classmethod
+    def read_lines(cls):
+        with cls.input_file().open("r") as src:
             for line in src.read().split("\n"):
                 yield line
 

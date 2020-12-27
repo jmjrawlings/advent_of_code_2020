@@ -1,22 +1,34 @@
-from src.day_1 import load_input
-from src.prelude import *
+from src import *
 
 log = setup_logger(__file__)
 
 
-class Day1(Problem):
+@attr.s(repr=False)
+class Data:
+    nums: List[int] = attr.ib()
+    target: int = attr.ib(default=2020)
+
+    @property
+    def count(self):
+        return len(self.nums)
+
+    def __repr__(self) -> str:
+        return f"<{self.count} nums, target {self.target}>"
+
+
+class Day1(Problem[Data]):
     day = 1
 
-    def load_input(self):
-        xs = [int(x) for x in self.lines]
-        log.debug(f"{len(xs)} numbers read")
-        return xs, len(xs)
+    @classmethod
+    def load_data(cls, lines) -> Data:
+        return Data([int(x) for x in lines])
 
 
 class Part1(Day1):
-    def solve():
+    part = 1
 
-        numbers, n = self.load_input()
+    @classmethod
+    async def solve_data(cls, data: Data):
 
         model = f"""
         int: N;
@@ -37,38 +49,37 @@ class Part1(Day1):
 
         """
 
-        sol = solve_model(model, xs=numbers, target=target)
+        sol, stats = await solve(model, xs=data.nums, N=data.count, target=data.target)
         answer = sol.a * sol.b
-        log.info(f"part_1 = {answer}")
         return answer
 
 
-def part_2(target=2020):
+class Part2(Day1):
+    part = 2
 
-    numbers, n = load_input()
+    @classmethod
+    async def solve_data(cls, data: Data, target=2020):
+        model = f"""
+        int: N;
+        set of int: INDEX = 1 .. N;
 
-    model = f"""
-    set of int: INDEX = 1 .. {n};
-    
-    array[INDEX] of int: xs;
-    int: target;
+        array[INDEX] of int: xs;
+        int: target;
 
-    var INDEX: i;
-    var INDEX: j;
-    var INDEX: k;
-    
-    var int: a;
-    var int: b;
-    var int: c;
+        var INDEX: i;
+        var INDEX: j;
+        var INDEX: k;
 
-    constraint a = xs[i];
-    constraint b = xs[j];
-    constraint c = xs[k];
+        var int: a;
+        var int: b;
+        var int: c;
 
-    constraint a + b + c = target;
-    """
+        constraint a = xs[i];
+        constraint b = xs[j];
+        constraint c = xs[k];
 
-    sol = solve_model(model, xs=numbers, target=target)
-    answer = sol.a * sol.b * sol.c
-    logger.info(f"part_2 = {answer}")
-    return answer
+        constraint a + b + c = target;
+        """
+        sol, stats = await solve(model, xs=data.nums, N=data.count, target=data.target)
+        answer = sol.a * sol.b * sol.c
+        return answer

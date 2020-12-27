@@ -30,7 +30,9 @@
 	"extensions": [
 		"ms-python.python",
 		"ms-python.vscode-pylance",
-		"dekkerone.minizinc"
+		"dekkerone.minizinc",
+		"aaron-bond.better-comments",
+		"ms-azuretools.vscode-docker"
 	],
 	// Use 'forwardPorts' to make a list of ports inside the container available locally.
 	"forwardPorts": [

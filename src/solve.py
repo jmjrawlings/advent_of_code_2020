@@ -13,9 +13,9 @@ class SolveOpts:
 
     # fmt: off
     intermediate : bool      = attr.ib(default=True)
-    solver       : str       = attr.ib(default="gecode")
-    timeout      : Duration  = attr.ib(factory=to_dur,converter=to_dur)
-    processes    : int       = attr.ib(default = 4)
+    solver       : str       = attr.ib(default="chuffed")
+    timeout      : Duration  = attr.ib(factory=to_dur, converter=to_dur)
+    processes    : int       = attr.ib(default=4)
     # fmt: on
 
 
@@ -46,7 +46,7 @@ class SolveStats(SolveResult):
     # fmt: on
 
 
-async def solve(model: str, opts: SolveOpts = SolveOpts(), **kwargs):
+async def solutions(model: str, opts: SolveOpts = SolveOpts(), **kwargs):
     from math import isfinite
 
     model_ = Model()
@@ -127,3 +127,11 @@ async def solve(model: str, opts: SolveOpts = SolveOpts(), **kwargs):
         yield solution, stats
 
         last = solution
+
+
+async def solve(model: str, opts: SolveOpts = SolveOpts(), **kwargs):
+    best_sol, best_stats = None, None
+    async for sol, stats in solutions(model, opts, **kwargs):
+        best_sol = sol
+        best_stats = stats
+    return best_sol, best_stats

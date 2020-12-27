@@ -21,7 +21,7 @@ pytest-asyncio = "^0.14.0"
 pytest-watch = "^4.2.0"
 
 [tool.pytest.ini_options]
-addopts = "-ra -q -s"
+addopts = "-ra -q -s -x"
 markers = [ "watch" ]
 
 [build-system]
