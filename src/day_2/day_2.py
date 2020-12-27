@@ -97,10 +97,8 @@ class Part1(Day2):
         )
 
 
-d2p1 = Part1()
-
-
 class Part2(Day2):
+    part = 2
 
     model = r"""
         include "globals.mzn";
@@ -161,4 +159,5 @@ class Part2(Day2):
         )
 
 
-d2p2 = Part2()
+Part1.register()
+Part2.register()

@@ -408,6 +408,13 @@ class Problem(Generic[T]):
             for line in src.read().split("\n"):
                 yield line
 
+    list: List["Problem"] = []
+
+    @classmethod
+    def register(cls):
+        p = cls()
+        cls.list.append(p)
+
     def __str__(self):
         return self.name
 

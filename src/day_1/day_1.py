@@ -52,9 +52,6 @@ class Part1(Day1):
         return dict(model=cls.model, xs=data.nums, N=data.count, target=data.target)
 
 
-d1p1 = Part1()
-
-
 class Part2(Day1):
     part = 2
 
@@ -86,4 +83,5 @@ class Part2(Day1):
         return dict(model=cls.model, xs=data.nums, N=data.count, target=data.target)
 
 
-d1p2 = Part2()
+Part1.register()
+Part2.register()
