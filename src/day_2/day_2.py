@@ -1,4 +1,4 @@
-from src import *
+from ..prelude import *
 
 log = setup_logger(__name__)
 
@@ -25,7 +25,6 @@ num2char = {v: k for k, v in char2num.items()}
 class Day2(Problem[Data]):
     day = 2
 
-    @classmethod
     def parse(cls, lines):
         data = Data()
         for line in lines:
@@ -74,8 +73,7 @@ class Part1(Day2):
     solve maximize sum(valid);
     """
 
-    @classmethod
-    def formulate(cls, data: Data):
+    def formulate(self, data: Data):
 
         rows = data.n
         cols = max(len(x) for x in data.password)
@@ -89,7 +87,7 @@ class Part1(Day2):
             chars.append(char2num[char])
 
         return dict(
-            model=cls.model,
+            model=self.model,
             lowers=data.lower,
             uppers=data.upper,
             passwords=passwords,
@@ -97,6 +95,9 @@ class Part1(Day2):
             rows=rows,
             cols=cols,
         )
+
+
+d2p1 = Part1()
 
 
 class Part2(Day2):
@@ -134,8 +135,7 @@ class Part2(Day2):
         solve maximize sum(valid);
         """
 
-    @classmethod
-    def formulate(cls, data: Data):
+    def formulate(self, data: Data):
 
         rows = len(data.lower)
         cols = max(len(p) for p in data.password)
@@ -151,7 +151,7 @@ class Part2(Day2):
             chars.append(char2num[c])
 
         return dict(
-            model=cls.model,
+            model=self.model,
             first_index=data.lower,
             second_index=data.upper,
             passwords=passwords,
@@ -159,3 +159,6 @@ class Part2(Day2):
             rows=rows,
             cols=cols,
         )
+
+
+d2p2 = Part2()

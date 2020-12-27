@@ -1,4 +1,4 @@
-from src import *
+from ..prelude import *
 
 log = setup_logger(__file__)
 
@@ -52,6 +52,9 @@ class Part1(Day1):
         return dict(model=cls.model, xs=data.nums, N=data.count, target=data.target)
 
 
+d1p1 = Part1()
+
+
 class Part2(Day1):
     part = 2
 
@@ -81,3 +84,6 @@ class Part2(Day1):
     @classmethod
     def formulate(cls, data):
         return dict(model=cls.model, xs=data.nums, N=data.count, target=data.target)
+
+
+d1p2 = Part2()

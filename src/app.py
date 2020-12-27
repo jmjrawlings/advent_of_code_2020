@@ -1,21 +1,20 @@
-from typing import List
+from .prelude import *
 from h2o_wave import Q, main, app, ui
+from src import day_1
 
-
-async def serve(q: Q):
-    render(q)
-    await q.page.save()
+problems = [day_1.Part1, day_1.Part2]
 
 
 @app("/app")
 async def serve(q: Q):
-    render(q)
+
+    problem = problems[q.client.index or 0]
+
+    def render(q: Q):
+
+        q.page["form"] = ui.form_card(
+            box="1 1 3 10",
+            items=[],
+        )
+
     await q.page.save()
-
-
-def render(q: Q):
-
-    q.page["form"] = ui.form_card(
-        box="1 1 3 10",
-        items=[],
-    )

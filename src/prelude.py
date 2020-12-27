@@ -1,7 +1,6 @@
 import asyncio
 import datetime as dt
 import string
-from abc import ABC, abstractmethod
 from functools import partial
 from pathlib import Path
 from typing import (
@@ -321,9 +320,13 @@ async def solutions(model: str, opts: SolveOpts = SolveOpts(), **kwargs):
             sol.absgap = abs(sol.gap)
             sol.relgap = None if not sol.bound else (sol.gap / sol.bound)
 
-        if res.status == Status.OPTIMAL_SOLUTION:
+        if res.solution is None:
             sol.data = last.data
             sol.answer = last.answer
+            sol.gap = last.gap
+            sol.absgap = last.absgap
+            sol.relgap = last.relgap
+            sol.bound = last.bound
 
         log.debug(f"{i} {sol.status.name} {sol.answer}")
         yield sol
@@ -342,72 +345,66 @@ async def solve(model: str, opts: SolveOpts = SolveOpts(), **kwargs):
     return sol
 
 
-class Problem(ABC, Generic[T]):
+class Problem(Generic[T]):
     """ An problem for the given Day/Part """
 
     day = 0
     part = 0
 
-    @classmethod
-    @abstractmethod
-    def parse(cls, lines: List[str]) -> T:
+    def parse(self, lines: List[str]) -> T:
         """
         Load the problem instance from the lines
         of the input file
         """
         raise NotImplementedError()
 
-    @classmethod
-    @abstractmethod
-    def formulate(cls, data: T) -> Dict[str, Any]:
+    def formulate(self, data: T) -> Dict[str, Any]:
         """
         Solve the problem instance given
         the input data
         """
         raise NotImplementedError()
 
-    @classmethod
-    def solve(cls: "Type[Problem[T]]"):
+    def solve(self, data: Optional[T] = None):
         start_time = now()
-        log.info(f"{cls.name()} started")
+        log.info(f"{self.name} started")
 
-        lines = list(cls.read())
-        data = cls.parse(lines)
+        if not data:
+            lines = list(self.read())
+            data = self.parse(lines)
+            log.info(f"{self.name} loaded {data!r} in {to_elapsed(now() - start_time)}")
 
-        log.info(f"{cls.name()} loaded {data!r} in {to_elapsed(now() - start_time)}")
-
-        model = cls.formulate(data)
+        model = self.formulate(data)
         sol = asyncio.run(solve(**model))
 
         log.info(
-            f"{cls.name()} returned {sol.answer} in {to_elapsed(now() - start_time)}"
+            f"{self.name} returned {sol.answer} in {to_elapsed(now() - start_time)}"
         )
 
         return sol
 
-    @classmethod
+    @property
     def day_name(cls):
         return f"day_{cls.day}"
 
-    @classmethod
+    @property
     def part_name(cls):
         return f"part_{cls.part}"
 
-    @classmethod
+    @property
     def name(cls):
-        return f"{cls.day_name()}_{cls.part_name()}"
+        return f"{cls.day_name}_{cls.part_name}"
 
-    @classmethod
-    def dir(cls) -> Path:
-        return root / "src" / cls.day_name()
+    @property
+    def dir(self) -> Path:
+        return root / "src" / self.day_name
 
-    @classmethod
-    def input_file(cls) -> Path:
-        return cls.dir() / "input.txt"
+    @property
+    def input(self) -> Path:
+        return self.dir / "input.txt"
 
-    @classmethod
-    def read(cls):
-        with cls.input_file().open("r") as src:
+    def read(self):
+        with self.input.open("r") as src:
             for line in src.read().split("\n"):
                 yield line
 
