@@ -26,7 +26,7 @@ class Day2(Problem[Data]):
     day = 2
 
     @classmethod
-    def load_data(self, lines):
+    def parse(cls, lines):
         data = Data()
         for line in lines:
             a, b, password = line.split()
@@ -75,7 +75,7 @@ class Part1(Day2):
     """
 
     @classmethod
-    async def solve_data(cls, data: Data):
+    def formulate(cls, data: Data):
 
         rows = data.n
         cols = max(len(x) for x in data.password)
@@ -88,8 +88,8 @@ class Part1(Day2):
             passwords.append(password)
             chars.append(char2num[char])
 
-        sol, stats = await solve(
-            cls.model,
+        return dict(
+            model=cls.model,
             lowers=data.lower,
             uppers=data.upper,
             passwords=passwords,
@@ -97,7 +97,6 @@ class Part1(Day2):
             rows=rows,
             cols=cols,
         )
-        return sol.objective
 
 
 class Part2(Day2):
@@ -136,7 +135,7 @@ class Part2(Day2):
         """
 
     @classmethod
-    async def solve_data(cls, data: Data):
+    def formulate(cls, data: Data):
 
         rows = len(data.lower)
         cols = max(len(p) for p in data.password)
@@ -151,8 +150,8 @@ class Part2(Day2):
         for c in data.char:
             chars.append(char2num[c])
 
-        sol, stats = await solve(
-            cls.model,
+        return dict(
+            model=cls.model,
             first_index=data.lower,
             second_index=data.upper,
             passwords=passwords,
@@ -160,5 +159,3 @@ class Part2(Day2):
             rows=rows,
             cols=cols,
         )
-
-        return sol.objective

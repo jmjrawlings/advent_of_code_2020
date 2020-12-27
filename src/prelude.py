@@ -20,6 +20,7 @@ from typing import (
 import attr
 import pendulum as pn
 from logzero import setup_logger
+from minizinc import Instance, Model, Result, Solver, Status
 from pendulum import (
     Date,
     DateTime,
@@ -168,6 +169,9 @@ def to_period(*args, **kwargs) -> Period:
     e = kwargs.pop("end") if "end" in kwargs else None
     d = kwargs.get("duration") if "duration" in kwargs else None
 
+    if not (args or kwargs):
+        return Period(now(), now())
+
     if s is not None and e is not None:
         st = to_datetime(s)
         et = to_datetime(e)
@@ -224,6 +228,120 @@ def opt(f: Callable[..., T]) -> Callable[..., Optional[T]]:
 root = Path(__file__).parent.parent
 
 
+log = setup_logger(__name__)
+
+from enum import Enum
+
+
+class Engine(Enum):
+    CHUFFED = "chuffed"
+    GECODE = "gecode"
+    CBC = "cbc"
+
+    def parse(x):
+        if isinstance(x, Engine):
+            return x
+
+        return Engine(x)
+
+
+@attr.s
+class SolveOpts:
+    """ Solving Options """
+
+    # fmt: off
+    intermediate : bool      = attr.ib(default=True)
+    engine       : Engine    = attr.ib(default="chuffed", converter=Engine.parse)
+    timeout      : Duration  = attr.ib(factory=to_dur, converter=to_dur)
+    processes    : int       = attr.ib(default=4)
+    # fmt: on
+
+
+@attr.s
+class Solution:
+
+    # fmt: off
+    iteration  : int             = attr.ib(default=1)
+    status     : Status          = attr.ib(default=Status.UNKNOWN)
+    total_time : Period          = attr.ib(converter=to_period, factory=to_period)
+    iter_time  : Period          = attr.ib(converter=to_period, factory=to_period)
+    answer     : Optional[int]   = attr.ib(default=None)
+    bound      : Optional[int]   = attr.ib(default=None)
+    gap        : Optional[int]   = attr.ib(default=None)
+    relgap     : Optional[float] = attr.ib(default=None)
+    absgap     : Optional[int]   = attr.ib(default=None)
+    statistics : Dict[str,Any]   = attr.ib(factory=dict)
+    data       : Dict[str, Any]  = attr.ib(factory=dict)
+    # fmt: on
+
+
+async def solutions(model: str, opts: SolveOpts = SolveOpts(), **kwargs):
+    from math import isfinite
+
+    model_ = Model()
+    model_.add_string(model)
+
+    solver = Solver.lookup(opts.engine.value)
+    instance = Instance(solver, model_)
+
+    for k, v in kwargs.items():
+        instance[k] = v
+
+    solver_args = dict(intermediate_solutions=opts.intermediate)
+
+    if opts.timeout:
+        solver_args["timeout"] = opts.timeout
+
+    if opts.processes and "-p" in solver.stdFlags:
+        solver_args["processes"] = opts.processes
+
+    i = 0
+    last = Solution()
+
+    async for result in instance.solutions(**solver_args):
+
+        res: Result = result
+
+        i += 1
+
+        sol = Solution(
+            total_time=now() - last.total_time.start,
+            iter_time=now() - last.iter_time.end,
+            answer=res.objective,
+            status=res.status,
+            statistics=res.statistics,
+            iteration=i,
+            data=res.solution,
+        )
+
+        bound = res.statistics.get("objectiveBound", None)
+        if bound is not None and isfinite(bound):
+            sol.bound = int(bound)
+            sol.gap = sol.answer - sol.bound
+            sol.absgap = abs(sol.gap)
+            sol.relgap = None if not sol.bound else (sol.gap / sol.bound)
+
+        if res.status == Status.OPTIMAL_SOLUTION:
+            sol.data = last.data
+            sol.answer = last.answer
+
+        log.debug(f"{i} {sol.status.name} {sol.answer}")
+        yield sol
+
+        last = sol
+
+
+async def solve(model: str, opts: SolveOpts = SolveOpts(), **kwargs):
+    """ Solve the given model and return the best solution """
+
+    sol = Solution()
+
+    async for sol in solutions(model, opts, **kwargs):
+        pass
+
+    return sol
+
+
 class Problem(ABC, Generic[T]):
     """ An problem for the given Day/Part """
 
@@ -232,37 +350,40 @@ class Problem(ABC, Generic[T]):
 
     @classmethod
     @abstractmethod
-    def load_data(cls, lines: List[str]) -> T:
+    def parse(cls, lines: List[str]) -> T:
         """
         Load the problem instance from the lines
         of the input file
         """
-        pass
+        raise NotImplementedError()
 
     @classmethod
     @abstractmethod
-    async def solve_data(cls, data: T):
+    def formulate(cls, data: T) -> Dict[str, Any]:
         """
         Solve the problem instance given
         the input data
         """
-        pass
+        raise NotImplementedError()
 
     @classmethod
     def solve(cls: "Type[Problem[T]]"):
-        log.info(f"{cls.name()} started")
         start_time = now()
+        log.info(f"{cls.name()} started")
 
-        lines = list(cls.read_lines())
-        data = cls.load_data(lines)
+        lines = list(cls.read())
+        data = cls.parse(lines)
 
         log.info(f"{cls.name()} loaded {data!r} in {to_elapsed(now() - start_time)}")
 
-        answer = asyncio.run(cls.solve_data(data))
+        model = cls.formulate(data)
+        sol = asyncio.run(solve(**model))
 
-        log.info(f"{cls.name()} returned {answer} in {to_elapsed(now() - start_time)}")
+        log.info(
+            f"{cls.name()} returned {sol.answer} in {to_elapsed(now() - start_time)}"
+        )
 
-        return answer
+        return sol
 
     @classmethod
     def day_name(cls):
@@ -285,7 +406,7 @@ class Problem(ABC, Generic[T]):
         return cls.dir() / "input.txt"
 
     @classmethod
-    def read_lines(cls):
+    def read(cls):
         with cls.input_file().open("r") as src:
             for line in src.read().split("\n"):
                 yield line

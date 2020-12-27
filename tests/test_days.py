@@ -1,7 +1,6 @@
 import pytest
 
 from src.prelude import *
-from src.solve import *
 
 log = setup_logger(__name__)
 

@@ -2,6 +2,11 @@ from typing import List
 from h2o_wave import Q, main, app, ui
 
 
+async def serve(q: Q):
+    render(q)
+    await q.page.save()
+
+
 @app("/app")
 async def serve(q: Q):
     render(q)
