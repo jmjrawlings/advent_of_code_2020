@@ -5,7 +5,7 @@ description = ""
 authors = ["J-M-J-R <52387908+J-M-J-R@users.noreply.github.com>"]
 
 [tool.poetry.dependencies]
-python = "^3.8"
+python = "^3.9"
 cattrs = "^1.1.2"
 attrs = "^20.3.0"
 h2o-wave = "^0.10.0"
@@ -22,6 +22,10 @@ pytest-watch = "^4.2.0"
 Pygments = "^2.7.3"
 Faker = "^5.0.2"
 vega-datasets = "^0.9.0"
+bokeh = "^2.2.3"
+matplotlib = "^3.3.3"
+pandas = "^1.2.0"
+plotly = "^4.14.1"
 
 [tool.pytest.ini_options]
 addopts = "-ra -q -s -x"
