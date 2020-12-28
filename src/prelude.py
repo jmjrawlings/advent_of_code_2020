@@ -13,6 +13,7 @@ from typing import (
     Optional,
     Type,
     TypeVar,
+    Tuple,
     Union,
 )
 
@@ -231,17 +232,24 @@ log = setup_logger(__name__)
 
 from enum import Enum
 
+E = TypeVar("E", bound=Enum)
 
-class Engine(Enum):
+
+class Enumeration(Enum):
+    @classmethod
+    def parse(cls: Type[E], x: Any) -> E:
+        if isinstance(x, cls):
+            return x
+        try:
+            return cls[x]
+        except:
+            return cls(x)
+
+
+class Engine(Enumeration):
     CHUFFED = "chuffed"
     GECODE = "gecode"
     CBC = "cbc"
-
-    def parse(x):
-        if isinstance(x, Engine):
-            return x
-
-        return Engine(x)
 
 
 @attr.s
@@ -334,7 +342,7 @@ async def solutions(model: str, opts: SolveOpts = SolveOpts(), **kwargs):
         last = sol
 
 
-async def solve(model: str, opts: SolveOpts = SolveOpts(), **kwargs):
+async def solve_model(model: str, opts: SolveOpts = SolveOpts(), **kwargs):
     """ Solve the given model and return the best solution """
 
     sol = Solution()
@@ -345,78 +353,112 @@ async def solve(model: str, opts: SolveOpts = SolveOpts(), **kwargs):
     return sol
 
 
-class Problem(Generic[T]):
+class Day(Generic[T]):
     """ An problem for the given Day/Part """
 
-    day = 0
-    part = 0
+    num = 0
+    title = ""
 
-    def parse(self, lines: List[str]) -> T:
+    def data(self) -> T:
         """
         Load the problem instance from the lines
         of the input file
         """
         raise NotImplementedError()
 
+    @property
+    def dir(self) -> Path:
+        return root / "src" / self.name
+
+    @property
+    def name(self):
+        return f"day_{self.num}"
+
+    @property
+    def file(self) -> Path:
+        return self.dir / "input.txt"
+
+    def read(self):
+        with self.file.open("r") as src:
+            for line in src.read().split("\n"):
+                yield line
+
+    @property
+    def lines(self):
+        return list(self.read())
+
+
+parts: Dict[Tuple[int, int], "Part"] = {}
+
+
+@attr.s(repr=False)
+class Part(Generic[T]):
+
+    num: int = attr.ib(default=1)
+    blurb = ""
+
+    @property
+    def name(self):
+        return f"part_{self.num}"
+
+    @property
+    def title(self):
+        return f"Part {self.num}"
+
     def formulate(self, data: T) -> Dict[str, Any]:
         """
-        Solve the problem instance given
-        the input data
+        Formulate the problem as a model to solve
         """
         raise NotImplementedError()
 
-    def solve(self, data: Optional[T] = None):
+
+from collections import defaultdict
+
+
+@attr.s(repr=False)
+class Problem(Generic[T]):
+    day: Day[T] = attr.ib()
+    part: Part[T] = attr.ib()
+    by_day: Dict[int, list["Problem"]] = defaultdict(list)
+    map: Dict[Tuple[int, int], "Problem"] = dict()
+
+    @classmethod
+    def register(cls, day: Type[Day[T]], part_1: Type[Part[T]], part_2: Type[Part[T]]):
+        d = day()
+        p1 = cls(d, part_1(num=1))
+        p2 = cls(d, part_2(num=2))
+        probs = [p1, p2]
+        for p in probs:
+            cls.map[p.key] = p
+            cls.by_day[p.day.num].append(p)
+
+        return probs
+
+    @property
+    def name(self):
+        return "_".join([self.day.name, self.part.name])
+
+    @property
+    def title(self):
+        return f"Day {self.day.num} Part {self.part.num}"
+
+    @property
+    def key(self):
+        return self.day.num, self.part.num
+
+    async def solve(self, data: Optional[T] = None, opts=SolveOpts()) -> int:
         start_time = now()
         log.info(f"{self.name} started")
 
-        if not data:
-            lines = list(self.read())
-            data = self.parse(lines)
+        if data is None:
+            data = self.day.data()
             log.info(f"{self.name} loaded {data!r} in {to_elapsed(now() - start_time)}")
 
-        model = self.formulate(data)
-        sol = asyncio.run(solve(**model))
+        model = self.part.formulate(data)
+        sol = await solve_model(opts=opts, **model)
 
         log.info(
             f"{self.name} returned {sol.answer} in {to_elapsed(now() - start_time)}"
         )
 
-        return sol
-
-    @property
-    def day_name(cls):
-        return f"day_{cls.day}"
-
-    @property
-    def part_name(cls):
-        return f"part_{cls.part}"
-
-    @property
-    def name(cls):
-        return f"{cls.day_name}_{cls.part_name}"
-
-    @property
-    def dir(self) -> Path:
-        return root / "src" / self.day_name
-
-    @property
-    def input(self) -> Path:
-        return self.dir / "input.txt"
-
-    def read(self):
-        with self.input.open("r") as src:
-            for line in src.read().split("\n"):
-                yield line
-
-    list: List["Problem"] = []
-
-    @classmethod
-    def register(cls):
-        p = cls()
-        cls.list.append(p)
-
-    def __str__(self):
-        return self.name
-
-    def __repr__(self):
-        return f"<{self!s}>"
+        return sol.answer

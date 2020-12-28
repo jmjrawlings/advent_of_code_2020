@@ -5,16 +5,17 @@ from src.prelude import *
 log = setup_logger(__name__)
 
 
-def test_problem(problem: Problem):
-    sol = problem.solve()
-    assert sol.answer
+@pytest.mark.asyncio
+async def test_problem(problem: Problem):
+    sol = await problem.solve()
+    assert sol
 
 
 @pytest.mark.asyncio
 async def test_solve():
     opts = SolveOpts()
     model = "var 0..1: x; solve maximize x;"
-    sol = await solve(model, opts)
+    sol = await solve_model(model, opts)
     assert sol.status == Status.OPTIMAL_SOLUTION
     assert sol.data.x == 1
 
@@ -23,7 +24,7 @@ async def test_solve():
 async def test_satisfy():
     opts = SolveOpts()
     model = "var 1..1: x; solve satisfy;"
-    sol = await solve(model, opts)
+    sol = await solve_model(model, opts)
     assert sol.status == Status.SATISFIED
     assert sol.data.x == 1
 
