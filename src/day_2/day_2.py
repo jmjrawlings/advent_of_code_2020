@@ -196,4 +196,4 @@ class Part2(Part[Data]):
         )
 
 
-problems = Problem.register(Day2, Part1, Part2)
+register(Day2, Part1, Part2)

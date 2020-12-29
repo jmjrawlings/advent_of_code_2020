@@ -356,8 +356,12 @@ async def solve_model(model: str, opts: SolveOpts = SolveOpts(), **kwargs):
 class Day(Generic[T]):
     """ An problem for the given Day/Part """
 
-    num = 0
-    title = ""
+    num: int
+    title: str
+
+    part_1: "Part[T]"
+    part_2: "Part[T]"
+    list: List["Day"] = []
 
     def data(self) -> T:
         """
@@ -395,7 +399,9 @@ parts: Dict[Tuple[int, int], "Part"] = {}
 class Part(Generic[T]):
 
     num: int = attr.ib(default=1)
-    blurb = ""
+    blurb: str
+    day: Day[T]
+    list: List["Part"] = []
 
     @property
     def name(self):
@@ -412,53 +418,31 @@ class Part(Generic[T]):
         raise NotImplementedError()
 
 
-from collections import defaultdict
+def register(day: Type[Day[T]], part_1: Type[Part[T]], part_2: Type[Part[T]]):
+    d = day()
+    p1 = part_1(num=1)
+    p2 = part_2(num=2)
+    d.part_1 = p1
+    d.part_2 = p2
+    parts = [p1, p2]
+    for part in parts:
+        part.day = d
+
+    Day.list.append(d)
+    Part.list += parts
 
 
-@attr.s(repr=False)
-class Problem(Generic[T]):
-    day: Day[T] = attr.ib()
-    part: Part[T] = attr.ib()
-    by_day: Dict[int, list["Problem"]] = defaultdict(list)
-    map: Dict[Tuple[int, int], "Problem"] = dict()
+async def solve(part, data: Optional[T] = None, opts=SolveOpts()) -> int:
+    start_time = now()
+    log.info(f"{part.name} started")
 
-    @classmethod
-    def register(cls, day: Type[Day[T]], part_1: Type[Part[T]], part_2: Type[Part[T]]):
-        d = day()
-        p1 = cls(d, part_1(num=1))
-        p2 = cls(d, part_2(num=2))
-        probs = [p1, p2]
-        for p in probs:
-            cls.map[p.key] = p
-            cls.by_day[p.day.num].append(p)
+    if data is None:
+        data = part.day.data()
+        log.info(f"{part.name} loaded {data!r} in {to_elapsed(now() - start_time)}")
 
-        return probs
+    model = part.part.formulate(data)
+    sol = await solve_model(opts=opts, **model)
 
-    @property
-    def name(self):
-        return "_".join([self.day.name, self.part.name])
+    log.info(f"{part.name} returned {sol.answer} in {to_elapsed(now() - start_time)}")
 
-    @property
-    def title(self):
-        return f"Day {self.day.num} Part {self.part.num}"
-
-    @property
-    def key(self):
-        return self.day.num, self.part.num
-
-    async def solve(self, data: Optional[T] = None, opts=SolveOpts()) -> int:
-        start_time = now()
-        log.info(f"{self.name} started")
-
-        if data is None:
-            data = self.day.data()
-            log.info(f"{self.name} loaded {data!r} in {to_elapsed(now() - start_time)}")
-
-        model = self.part.formulate(data)
-        sol = await solve_model(opts=opts, **model)
-
-        log.info(
-            f"{self.name} returned {sol.answer} in {to_elapsed(now() - start_time)}"
-        )
-
-        return sol.answer
+    return sol.answer

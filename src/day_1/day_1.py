@@ -114,4 +114,4 @@ class Part2(Part[Data]):
         return dict(model=self.model, xs=data.nums, N=data.count, target=data.target)
 
 
-problems = Problem.register(Day1, Part1, Part2)
+register(Day1, Part1, Part2)
