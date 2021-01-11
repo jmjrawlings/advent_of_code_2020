@@ -18,6 +18,7 @@ class Data:
         return f"<{len(self.lower)} items>"
 
 
+data = Data()
 char2num = {char: i for i, char in enumerate(string.ascii_lowercase)}
 num2char = {v: k for k, v in char2num.items()}
 

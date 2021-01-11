@@ -69,23 +69,22 @@ async def serve(q: Q):
                 ],
             ),
         )
+        title_card = q.page.add(
+            "title", ui.form_card(box="3 1 5 1", items=[ui.text_l("title", title(day))])
+        )
+
         main_card = q.page.add(
             "main",
-            ui.form_card(
-                box="3 1 6 8",
+            ui.tab_card(
+                box="3 2 5 7",
                 items=[
-                    ui.text_xl(title(day)),
-                    ui.choice_group(
-                        "part",
-                        label="Part",
-                        choices=[ui.choice(1), ui.choice(2)],
-                        trigger=True,
-                        value=part.num,
-                    ),
-                    ui.separator(),
+                    ui.tab("input", "Input Data"),
+                    ui.tab("part_1", "Part 1"),
+                    ui.tab("part_2", "Part 2"),
                 ],
             ),
         )
+
     else:
         q.page["sidebar"].items[0].choice_group.value = day.num
         q.page["sidebar"].items[2].choice_group.value = engine.name

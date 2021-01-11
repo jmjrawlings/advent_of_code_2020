@@ -258,7 +258,7 @@ class SolveOpts:
 
     # fmt: off
     intermediate : bool      = attr.ib(default=True)
-    engine       : Engine    = attr.ib(default="chuffed", converter=Engine.parse)
+    engine       : Engine    = attr.ib(default=Engine.CHUFFED, converter=Engine.parse) # type: ignore
     timeout      : Duration  = attr.ib(factory=to_dur, converter=to_dur)
     processes    : int       = attr.ib(default=4)
     # fmt: on
@@ -297,10 +297,10 @@ async def solutions(model: str, opts: SolveOpts = SolveOpts(), **kwargs):
     solver_args = dict(intermediate_solutions=opts.intermediate)
 
     if opts.timeout:
-        solver_args["timeout"] = opts.timeout
+        solver_args["timeout"] = opts.timeout  # type: ignore
 
     if opts.processes and "-p" in solver.stdFlags:
-        solver_args["processes"] = opts.processes
+        solver_args["processes"] = opts.processes  # type: ignore
 
     i = 0
     last = Solution()
@@ -324,7 +324,7 @@ async def solutions(model: str, opts: SolveOpts = SolveOpts(), **kwargs):
         bound = res.statistics.get("objectiveBound", None)
         if bound is not None and isfinite(bound):
             sol.bound = int(bound)
-            sol.gap = sol.answer - sol.bound
+            sol.gap = sol.answer - sol.bound  # type: ignore
             sol.absgap = abs(sol.gap)
             sol.relgap = None if not sol.bound else (sol.gap / sol.bound)
 
