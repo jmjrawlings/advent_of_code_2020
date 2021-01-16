@@ -1,7 +1,7 @@
 start-wave:
 	cd /wave && ./waved
 
-watch-wave:
+watch-app:
 	wave run app.py
 
 tour-wave:
