@@ -282,7 +282,7 @@ class Solution:
     # fmt: on
 
 
-async def solutions(model: str, opts: SolveOpts = SolveOpts(), **kwargs):
+async def solutions(model: str, opts: SolveOpts = SolveOpts(), log=log, **kwargs):
     from math import isfinite
 
     model_ = Model()
@@ -363,7 +363,10 @@ class Day(Generic[T]):
     part_2: "Part[T]"
     list: List["Day"] = []
 
-    def data(self) -> T:
+    def __init__(self):
+        self.log = setup_logger(self.name)
+
+    def data(self, lines: List[str]) -> T:
         """
         Load the problem instance from the lines
         of the input file
@@ -382,23 +385,21 @@ class Day(Generic[T]):
     def file(self) -> Path:
         return self.dir / "input.txt"
 
-    def read(self):
+    def lines(self):
         with self.file.open("r") as src:
             for line in src.read().split("\n"):
                 yield line
-
-    @property
-    def lines(self):
-        return list(self.read())
 
 
 parts: Dict[Tuple[int, int], "Part"] = {}
 
 
-@attr.s(repr=False)
 class Part(Generic[T]):
+    def __init__(self, num: int):
+        self.num = num
+        self.log = setup_logger(self.name)
 
-    num: int = attr.ib(default=1)
+    num: int
     blurb: str
     day: Day[T]
     list: List["Part"] = []
@@ -432,16 +433,17 @@ def register(day: Type[Day[T]], part_1: Type[Part[T]], part_2: Type[Part[T]]):
     Part.list += parts
 
 
-async def solve(part, data: Optional[T] = None, opts=SolveOpts()) -> int:
+async def solve(part: Part, data: Optional[T] = None, opts=SolveOpts()) -> int:
     start_time = now()
     log.info(f"{part.name} started")
 
     if data is None:
-        data = part.day.data()
+        lines = list(part.day.lines())
+        data = part.day.data(lines)
         log.info(f"{part.name} loaded {data!r} in {to_elapsed(now() - start_time)}")
 
-    model = part.part.formulate(data)
-    sol = await solve_model(opts=opts, **model)
+    model = part.formulate(data)
+    sol = await solve_model(opts=opts, log=part.log, **model)
 
     log.info(f"{part.name} returned {sol.answer} in {to_elapsed(now() - start_time)}")
 

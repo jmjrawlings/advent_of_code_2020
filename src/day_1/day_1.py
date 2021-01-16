@@ -20,8 +20,8 @@ class Day1(Day[Data]):
     num = 1
     title = "Report Repair"
 
-    def data(self):
-        return Data([int(x) for x in self.lines])
+    def data(self, lines):
+        return Data([int(x) for x in lines])
 
 
 class Part1(Part[Data]):

@@ -18,7 +18,6 @@ class Data:
         return f"<{len(self.lower)} items>"
 
 
-data = Data()
 char2num = {char: i for i, char in enumerate(string.ascii_lowercase)}
 num2char = {v: k for k, v in char2num.items()}
 
@@ -27,9 +26,9 @@ class Day2(Day[Data]):
     num = 2
     title = "Password Philosophy"
 
-    def data(self):
+    def data(self, lines):
         data = Data()
-        for line in self.lines:
+        for line in lines:
             a, b, password = line.split()
             lower, upper = a.split("-")
             char = b[0]

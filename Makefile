@@ -1,10 +1,10 @@
-wave-start:
+start-wave:
 	cd /wave && ./waved
 
-wave-watch:
+watch-wave:
 	wave run app.py
 
-wave-tour:
+tour-wave:
 	cd /wave && wave run --no-reload examples.tour
 
 watch-tests:

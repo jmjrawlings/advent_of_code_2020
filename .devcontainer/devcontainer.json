@@ -34,7 +34,7 @@
 		"ms-python.vscode-pylance",
 		"dekkerone.minizinc",
 		"aaron-bond.better-comments",
-		"eamodio.gitlens"
+		"njpwerner.autodocstring"
 	],
 	// Use 'forwardPorts' to make a list of ports inside the container available locally.
 	"forwardPorts": [

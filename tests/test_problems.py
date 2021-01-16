@@ -6,6 +6,11 @@ log = setup_logger(__name__)
 
 
 @pytest.mark.asyncio
+async def test_part(part: Part):
+    sol = await solve(part)
+
+
+@pytest.mark.asyncio
 async def test_solve():
     opts = SolveOpts()
     model = "var 0..1: x; solve maximize x;"
