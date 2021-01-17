@@ -3,6 +3,8 @@ import datetime as dt
 import string
 from functools import partial
 from pathlib import Path
+from enum import Enum
+from subprocess import call
 from typing import (
     Any,
     Callable,
@@ -11,10 +13,11 @@ from typing import (
     Generic,
     List,
     Optional,
+    Tuple,
     Type,
     TypeVar,
-    Tuple,
     Union,
+    get_args,
 )
 
 import attr
@@ -37,6 +40,23 @@ from pendulum.tz.timezone import UTC, Timezone
 log = setup_logger("app")
 
 T = TypeVar("T")
+
+
+# An argument to a function
+Arg = Union[T, Type[T], Callable[[], T]]
+
+
+def arg(type: Type[T], val: Arg[T]) -> T:
+    """ Convert the give value to the type """
+
+    if isinstance(val, type):
+        return val
+    if callable(val):
+        return arg(type, val())
+    if val is None:
+        return type()
+
+    raise ValueError(f"Could not unpack argument {val} as {type.__name__}")
 
 
 def to_dur(*args, **kwargs) -> Duration:
@@ -230,7 +250,6 @@ root = Path(__file__).parent.parent
 
 log = setup_logger(__name__)
 
-from enum import Enum
 
 E = TypeVar("E", bound=Enum)
 
@@ -282,11 +301,15 @@ class Solution:
     # fmt: on
 
 
-async def solutions(model: str, opts: SolveOpts = SolveOpts(), log=log, **kwargs):
+async def solutions(
+    model: str, opts: Arg[SolveOpts] = SolveOpts, log=log.debug, **kwargs
+):
     from math import isfinite
 
     model_ = Model()
     model_.add_string(model)
+
+    opts = arg(SolveOpts, opts)
 
     solver = Solver.lookup(opts.engine.value)
     instance = Instance(solver, model_)
@@ -336,13 +359,13 @@ async def solutions(model: str, opts: SolveOpts = SolveOpts(), log=log, **kwargs
             sol.relgap = last.relgap
             sol.bound = last.bound
 
-        log.debug(f"{i} {sol.status.name} {sol.answer}")
+        log(f"{i} {sol.status.name} {sol.answer}")
         yield sol
 
         last = sol
 
 
-async def solve_model(model: str, opts: SolveOpts = SolveOpts(), **kwargs):
+async def solve_model(model: str, opts: Arg[SolveOpts] = SolveOpts, **kwargs):
     """ Solve the given model and return the best solution """
 
     sol = Solution()
@@ -361,7 +384,7 @@ class Day(Generic[T]):
 
     part_1: "Part[T]"
     part_2: "Part[T]"
-    list: List["Day"] = []
+    s: List["Day"] = []
 
     def __init__(self):
         self.log = setup_logger(self.name)
@@ -395,22 +418,21 @@ parts: Dict[Tuple[int, int], "Part"] = {}
 
 
 class Part(Generic[T]):
-    def __init__(self, num: int):
+    def __init__(self, day: Day[T], num: int):
         self.num = num
+        self.day = day
         self.log = setup_logger(self.name)
 
-    num: int
     blurb: str
-    day: Day[T]
-    list: List["Part"] = []
+    s: List["Part"] = []
 
     @property
     def name(self):
-        return f"part_{self.num}"
+        return f"day{self.day.num}_part{self.num}"
 
     @property
     def title(self):
-        return f"Part {self.num}"
+        return f"{self.day.title} Part {self.num}"
 
     def formulate(self, data: T) -> Dict[str, Any]:
         """
@@ -420,20 +442,29 @@ class Part(Generic[T]):
 
 
 def register(day: Type[Day[T]], part_1: Type[Part[T]], part_2: Type[Part[T]]):
+    log.error(f"register {day} {part_1} {part_2}")
     d = day()
-    p1 = part_1(num=1)
-    p2 = part_2(num=2)
+    p1 = part_1(day=d, num=1)
+    p2 = part_2(day=d, num=2)
     d.part_1 = p1
     d.part_2 = p2
-    parts = [p1, p2]
-    for part in parts:
-        part.day = d
-
-    Day.list.append(d)
-    Part.list += parts
+    Day.s.append(d)
+    Part.s += [p1, p2]
 
 
-async def solve(part: Part, data: Optional[T] = None, opts=SolveOpts()) -> int:
+async def solve_part(
+    part: Part[T], data: Optional[T] = None, opts: Arg[SolveOpts] = SolveOpts
+) -> int:
+    """Solve the problem using MiniZinc
+
+    Args:
+        part (Part[T]): The part to solve
+        data (T, optional): Custom data
+        opts (SolveOpts, optional):
+
+    Returns:
+        int: [description]
+    """
     start_time = now()
     log.info(f"{part.name} started")
 
@@ -443,7 +474,7 @@ async def solve(part: Part, data: Optional[T] = None, opts=SolveOpts()) -> int:
         log.info(f"{part.name} loaded {data!r} in {to_elapsed(now() - start_time)}")
 
     model = part.formulate(data)
-    sol = await solve_model(opts=opts, log=part.log, **model)
+    sol = await solve_model(opts=opts, log=part.log.info, **model)
 
     log.info(f"{part.name} returned {sol.answer} in {to_elapsed(now() - start_time)}")
 

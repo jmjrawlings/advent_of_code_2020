@@ -34,8 +34,8 @@ RUN poetry install
 
 # Ensure folders are created to volume mount VSCode extensions
 RUN mkdir -p \
-        ~/.vscode-server/extensions \
-        ~/.vscode-server-insiders/extensions
+    ~/.vscode-server/extensions \
+    ~/.vscode-server-insiders/extensions
 
 # Install Docker CE CLI
 RUN apt-get update \

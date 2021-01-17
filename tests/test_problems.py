@@ -7,7 +7,7 @@ log = setup_logger(__name__)
 
 @pytest.mark.asyncio
 async def test_part(part: Part):
-    sol = await solve(part)
+    sol = await solve_part(part)
 
 
 @pytest.mark.asyncio
@@ -17,6 +17,7 @@ async def test_solve():
     sol = await solve_model(model, opts)
     assert sol.status == Status.OPTIMAL_SOLUTION
     assert sol.data.x == 1
+    assert True
 
 
 @pytest.mark.asyncio
@@ -33,4 +34,4 @@ async def test_syntax_error():
     opts = SolveOpts()
     model = "asdf"
     with pytest.raises(Exception):
-        sol = await solve(model, opts)
+        sol = await solve_model(model, opts)
