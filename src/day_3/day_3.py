@@ -1,14 +1,16 @@
 from ..prelude import *
 
 
-@attr.s(auto_attribs=True)
+@attr.s(kw_only=True)
 class Data:
-    map: List[List[int]]
-    x: int
-    y: int
+    map: List[List[int]] = attr.ib()
+    x1: int = attr.ib()
+    y1: int = attr.ib()
+    dx: int = attr.ib(default=1)
+    dy: int = attr.ib(default=1)
 
     def __str__(self) -> str:
-        return f"<x={self.x} y={self.y}>"
+        return f"<x1={self.x1} y1={self.y1}>"
 
 
 class Day3(Day[Data]):
@@ -22,53 +24,10 @@ class Day3(Day[Data]):
             row = [int(x == "#") for x in line]
             map.append(row)
 
-        y = len(map)
-        x = len(lines[0])
+        y1 = len(map)
+        x1 = len(lines[0])
         map = map
-        return Data(map, x, y)
-
-    model = r"""
-
-        int: x0 = 1;
-        int: y0 = 1;
-        int: x1;
-        int: y1;
-
-        set of int: Y = y0 .. y1;
-        set of int: X = x0 .. x1;
-
-        int: dx;
-        int: dy;
-
-        set of int: MOVES = 1 .. (y1-1);
-        var MOVES: max_move;
-
-        array[Y, X] of 0..1: map;
-        array[MOVES] of var 0..1: route;
-
-        constraint forall (i in MOVES) (
-            (i <= max_move) ->
-            let {
-                X: x = x0 + ((i*dx) mod x1);
-                Y: y = y0 + i*dy;
-
-                }
-            in
-                route[i] = map[y,x]
-        );
-
-        var int: answer;
-
-        constraint answer = sum(route);
-        solve maximize max_move;
-
-        """
-
-    def formulate(self, data: Data):
-        return dict(model=self.model, map=data.map, dx=data.x, dy=data.y)
-
-    def solve(self, dx, dy):
-        return solve_model(self.model, y1=self.y, x1=self.x, map=self.map, dx=dx, dy=dy)
+        return Data(map=map, x1=x1, y1=y1)
 
 
 class Part1(Part[Data]):
@@ -128,6 +87,46 @@ class Part1(Part[Data]):
 
     Starting at the top-left corner of your map and following a slope of right 3 and down 1, how many trees would you encounter?
     """
+
+    model = r"""
+
+        int: x0 = 1;
+        int: y0 = 1;
+        int: x1;
+        int: y1;
+
+        set of int: Y = y0 .. y1;
+        set of int: X = x0 .. x1;
+
+        int: dx;
+        int: dy;
+
+        set of int: MOVES = 1 .. (y1-1);
+        var MOVES: max_move;
+
+        array[Y, X] of 0..1: map;
+        array[MOVES] of var 0..1: route;
+
+        constraint forall (i in MOVES) (
+            (i <= max_move) ->
+            let {
+                X: x = x0 + ((i*dx) mod x1);
+                Y: y = y0 + i*dy;
+
+                }
+            in
+                route[i] = map[y,x]
+        );
+
+        var int: answer;
+
+        constraint answer = sum(route);
+        solve maximize max_move;
+
+        """
+
+    def formulate(self, data: Data):
+        return dict(model=self.model, map=data.map, x1=data.x1, y1=data.y1, dx=3, dy=1)
 
 
 class Part2(Part[Data]):
