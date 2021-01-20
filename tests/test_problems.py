@@ -14,7 +14,7 @@ async def test_part(part: Part):
 async def test_solve():
     opts = SolveOpts()
     model = "var 0..1: x; solve maximize x;"
-    sol = await solve_model(model, opts)
+    sol = await solve(model, opts)
     assert sol.status == Status.OPTIMAL_SOLUTION
     assert sol.data.x == 1
     assert True
@@ -24,7 +24,7 @@ async def test_solve():
 async def test_satisfy():
     opts = SolveOpts()
     model = "var 1..1: x; solve satisfy;"
-    sol = await solve_model(model, opts)
+    sol = await solve(model, opts)
     assert sol.status == Status.SATISFIED
     assert sol.data.x == 1
 
@@ -34,4 +34,4 @@ async def test_syntax_error():
     opts = SolveOpts()
     model = "asdf"
     with pytest.raises(Exception):
-        sol = await solve_model(model, opts)
+        sol = await solve(model, opts)

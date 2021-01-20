@@ -276,7 +276,7 @@ class SolveOpts:
     """ Solving Options """
 
     # fmt: off
-    intermediate : bool      = attr.ib(default=True)
+    intermediate : bool      = attr.ib(default=False)
     engine       : Engine    = attr.ib(default=Engine.CHUFFED, converter=Engine.parse) # type: ignore
     timeout      : Duration  = attr.ib(factory=to_dur, converter=to_dur)
     processes    : int       = attr.ib(default=4)
@@ -295,15 +295,12 @@ class Solution:
     bound      : Optional[int]   = attr.ib(default=None)
     gap        : Optional[int]   = attr.ib(default=None)
     relgap     : Optional[float] = attr.ib(default=None)
-    absgap     : Optional[int]   = attr.ib(default=None)
     statistics : Dict[str,Any]   = attr.ib(factory=dict)
     data       : Dict[str, Any]  = attr.ib(factory=dict)
     # fmt: on
 
 
-async def solutions(
-    model: str, opts: Arg[SolveOpts] = SolveOpts, log=log.debug, **kwargs
-):
+async def solutions(model: str, opts: Arg[SolveOpts] = SolveOpts, **kwargs):
     from math import isfinite
 
     model_ = Model()
@@ -329,7 +326,6 @@ async def solutions(
     last = Solution()
 
     async for result in instance.solutions(**solver_args):
-
         res: Result = result
 
         i += 1
@@ -347,25 +343,23 @@ async def solutions(
         bound = res.statistics.get("objectiveBound", None)
         if bound is not None and isfinite(bound):
             sol.bound = int(bound)
-            sol.gap = sol.answer - sol.bound  # type: ignore
-            sol.absgap = abs(sol.gap)
+            sol.gap = abs(sol.answer - sol.bound)  # type: ignore
             sol.relgap = None if not sol.bound else (sol.gap / sol.bound)
 
         if res.solution is None:
             sol.data = last.data
             sol.answer = last.answer
             sol.gap = last.gap
-            sol.absgap = last.absgap
             sol.relgap = last.relgap
             sol.bound = last.bound
 
-        log(f"{i} {sol.status.name} {sol.answer}")
+        log.debug(f"{i} {sol.status.name} {sol.answer}")
         yield sol
 
         last = sol
 
 
-async def solve_model(model: str, opts: Arg[SolveOpts] = SolveOpts, **kwargs):
+async def solve(model: str, opts: Arg[SolveOpts] = SolveOpts, **kwargs):
     """ Solve the given model and return the best solution """
 
     sol = Solution()
@@ -438,26 +432,26 @@ class Part(Generic[T]):
         """
         raise NotImplementedError()
 
+    async def answer(self, data: T, opts: Arg[SolveOpts] = SolveOpts) -> int:
+        model = self.formulate(data)
+        sol = await solve(opts=opts, **model)
+        return sol.answer
+
     async def solve(
-        self, data: Optional[T] = None, opts: Arg[SolveOpts] = SolveOpts, **kwargs
+        self, data: Optional[T] = None, opts: Arg[SolveOpts] = SolveOpts
     ) -> int:
         start_time = now()
-        log.info(f"solve {self.name} started")
+        log.info(f"D{self.day.num}P{self.num} solve start")
 
         if data is None:
             lines = list(self.day.lines)
             data = self.day.data(lines)
 
-        data = attr.evolve(data, **kwargs)
-
-        model = self.formulate(data)
-        sol = await solve_model(opts=opts, log=self.log.info, **model)
-
+        answer = await self.answer(data, opts)
         log.info(
-            f"{self.name} returned {sol.answer} in {to_elapsed(now() - start_time)}"
+            f"D{self.day.num}P{self.num} returned {answer} in {to_elapsed(now() - start_time)}"
         )
-
-        return sol.answer
+        return answer
 
 
 def register(day: Type[Day[T]], part_1: Type[Part[T]], part_2: Type[Part[T]]):

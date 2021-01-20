@@ -473,13 +473,12 @@ class Part2(Part[Data]):
     What do you get if you multiply together the number of trees encountered on each of the listed slopes?
     """
 
-    async def solve(
-        self, data: Optional[Data] = None, opts: Arg[SolveOpts] = SolveOpts, **kwargs
-    ) -> int:
+    async def answer(self, data, opts):
         answer = 1
 
         for dx, dy in zip([1, 3, 5, 7, 1], [1, 1, 1, 1, 2]):
-            sol = await self.day.part_1.solve(data=data, opts=opts, dx=dx, dy=dy)
+            data_ = attr.evolve(data, dx=dx, dy=dy)
+            sol = await self.day.part_1.solve(data=data_, opts=opts)
             answer *= sol
 
         return answer
