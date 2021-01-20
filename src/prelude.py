@@ -277,7 +277,7 @@ class SolveOpts:
 
     # fmt: off
     intermediate : bool      = attr.ib(default=False)
-    engine       : Engine    = attr.ib(default=Engine.CHUFFED, converter=Engine.parse) # type: ignore
+    engine       : Engine    = attr.ib(default=Engine.GECODE, converter=Engine.parse) # type: ignore
     timeout      : Duration  = attr.ib(factory=to_dur, converter=to_dur)
     processes    : int       = attr.ib(default=4)
     # fmt: on
@@ -294,13 +294,21 @@ class Solution:
     answer     : Optional[int]   = attr.ib(default=None)
     bound      : Optional[int]   = attr.ib(default=None)
     gap        : Optional[int]   = attr.ib(default=None)
-    relgap     : Optional[float] = attr.ib(default=None)
+    rgap       : Optional[float] = attr.ib(default=None)
+    delta      : Optional[int]   = attr.ib(default=None)
+    rdelta     : Optional[float] = attr.ib(default=None)
     statistics : Dict[str,Any]   = attr.ib(factory=dict)
     data       : Dict[str, Any]  = attr.ib(factory=dict)
     # fmt: on
 
+    def __str__(self):
+        s = f"iter={self.iteration} ans={self.answer}"
+        if self.bound:
+            s += f" bnd={self.bound} gap={self.gap} rgap={self.rgap} del={self.delta} rdel={self.rdelta}"
+        return s
 
-async def solutions(model: str, opts: Arg[SolveOpts] = SolveOpts, **kwargs):
+
+async def solutions(model: str, opts: Arg[SolveOpts] = SolveOpts, name="", **kwargs):
     from math import isfinite
 
     model_ = Model()
@@ -314,13 +322,13 @@ async def solutions(model: str, opts: Arg[SolveOpts] = SolveOpts, **kwargs):
     for k, v in kwargs.items():
         instance[k] = v
 
-    solver_args = dict(intermediate_solutions=opts.intermediate)
+    solver_args: Dict[str, Any] = dict(intermediate_solutions=opts.intermediate)
 
     if opts.timeout:
-        solver_args["timeout"] = opts.timeout  # type: ignore
+        solver_args["timeout"] = opts.timeout
 
     if opts.processes and "-p" in solver.stdFlags:
-        solver_args["processes"] = opts.processes  # type: ignore
+        solver_args["processes"] = opts.processes
 
     i = 0
     last = Solution()
@@ -344,16 +352,21 @@ async def solutions(model: str, opts: Arg[SolveOpts] = SolveOpts, **kwargs):
         if bound is not None and isfinite(bound):
             sol.bound = int(bound)
             sol.gap = abs(sol.answer - sol.bound)  # type: ignore
-            sol.relgap = None if not sol.bound else (sol.gap / sol.bound)
+            sol.rgap = None if not sol.bound else (sol.gap / sol.bound)
+            if last.gap is not None:
+                sol.delta = sol.gap - last.gap
+                sol.rdelta = sol.rgap - last.rgap
 
         if res.solution is None:
             sol.data = last.data
             sol.answer = last.answer
             sol.gap = last.gap
-            sol.relgap = last.relgap
+            sol.rgap = last.rgap
             sol.bound = last.bound
+            sol.delta = last.delta
+            sol.rdelta = last.rdelta
 
-        log.debug(f"{i} {sol.status.name} {sol.answer}")
+        log.debug(f"{name} {sol!s}")
         yield sol
 
         last = sol
@@ -441,16 +454,15 @@ class Part(Generic[T]):
         self, data: Optional[T] = None, opts: Arg[SolveOpts] = SolveOpts
     ) -> int:
         start_time = now()
-        log.info(f"D{self.day.num}P{self.num} solve start")
+        code = f"D{self.day.num}P{self.num}"
+        log.info(f"{code} solve start")
 
         if data is None:
             lines = list(self.day.lines)
             data = self.day.data(lines)
 
         answer = await self.answer(data, opts)
-        log.info(
-            f"D{self.day.num}P{self.num} returned {answer} in {to_elapsed(now() - start_time)}"
-        )
+        log.info(f"{code} returned {answer} in {to_elapsed(now() - start_time)}")
         return answer
 
 

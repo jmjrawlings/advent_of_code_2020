@@ -474,14 +474,18 @@ class Part2(Part[Data]):
     """
 
     async def answer(self, data, opts):
-        answer = 1
-
-        for dx, dy in zip([1, 3, 5, 7, 1], [1, 1, 1, 1, 2]):
+        async def sub_problem(dx, dy):
             data_ = attr.evolve(data, dx=dx, dy=dy)
-            sol = await self.day.part_1.solve(data=data_, opts=opts)
-            answer *= sol
+            answer = await self.day.part_1.solve(data=data_, opts=opts)
+            return answer
 
-        return answer
+        a = await sub_problem(1, 1)
+        b = await sub_problem(3, 1)
+        c = await sub_problem(5, 1)
+        d = await sub_problem(7, 1)
+        e = await sub_problem(1, 2)
+
+        return a * b * c * d * e
 
 
 register(Day3, Part1, Part2)
