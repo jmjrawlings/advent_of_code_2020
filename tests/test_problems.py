@@ -7,7 +7,7 @@ log = setup_logger(__name__)
 
 @pytest.mark.asyncio
 async def test_part(part: Part):
-    sol = await solve_part(part)
+    sol = await part.solve()
 
 
 @pytest.mark.asyncio

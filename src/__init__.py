@@ -1,4 +1,2 @@
 from .prelude import *
-from .day_1 import *
-from .day_2 import *
-from .day_3 import *
+from . import day_1, day_2, day_3

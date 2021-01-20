@@ -381,6 +381,7 @@ class Day(Generic[T]):
 
     num: int
     title: str
+    input: str
 
     part_1: "Part[T]"
     part_2: "Part[T]"
@@ -405,13 +406,10 @@ class Day(Generic[T]):
         return f"day_{self.num}"
 
     @property
-    def file(self) -> Path:
-        return self.dir / "input.txt"
-
     def lines(self):
-        with self.file.open("r") as src:
-            for line in src.read().split("\n"):
-                yield line
+        for line in self.input.split("\n"):
+            if line:
+                yield line.strip()
 
 
 parts: Dict[Tuple[int, int], "Part"] = {}
@@ -440,9 +438,29 @@ class Part(Generic[T]):
         """
         raise NotImplementedError()
 
+    async def solve(
+        self, data: Optional[T] = None, opts: Arg[SolveOpts] = SolveOpts, **kwargs
+    ) -> int:
+        start_time = now()
+        log.info(f"solve {self.name} started")
+
+        if data is None:
+            lines = list(self.day.lines)
+            data = self.day.data(lines)
+
+        data = attr.evolve(data, **kwargs)
+
+        model = self.formulate(data)
+        sol = await solve_model(opts=opts, log=self.log.info, **model)
+
+        log.info(
+            f"{self.name} returned {sol.answer} in {to_elapsed(now() - start_time)}"
+        )
+
+        return sol.answer
+
 
 def register(day: Type[Day[T]], part_1: Type[Part[T]], part_2: Type[Part[T]]):
-    log.error(f"register {day} {part_1} {part_2}")
     d = day()
     p1 = part_1(day=d, num=1)
     p2 = part_2(day=d, num=2)
@@ -450,32 +468,3 @@ def register(day: Type[Day[T]], part_1: Type[Part[T]], part_2: Type[Part[T]]):
     d.part_2 = p2
     Day.s.append(d)
     Part.s += [p1, p2]
-
-
-async def solve_part(
-    part: Part[T], data: Optional[T] = None, opts: Arg[SolveOpts] = SolveOpts
-) -> int:
-    """Solve the problem using MiniZinc
-
-    Args:
-        part (Part[T]): The part to solve
-        data (T, optional): Custom data
-        opts (SolveOpts, optional):
-
-    Returns:
-        int: [description]
-    """
-    start_time = now()
-    log.info(f"{part.name} started")
-
-    if data is None:
-        lines = list(part.day.lines())
-        data = part.day.data(lines)
-        log.info(f"{part.name} loaded {data!r} in {to_elapsed(now() - start_time)}")
-
-    model = part.formulate(data)
-    sol = await solve_model(opts=opts, log=part.log.info, **model)
-
-    log.info(f"{part.name} returned {sol.answer} in {to_elapsed(now() - start_time)}")
-
-    return sol.answer
