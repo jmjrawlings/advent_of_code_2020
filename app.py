@@ -1,7 +1,7 @@
 from h2o_wave import Q, main, app, ui
 from src import *
 
-days = {d.num: d for d in Day.list}
+days = {d.num: d for d in Day.s}
 
 
 def title(day: Day):
@@ -26,7 +26,7 @@ async def serve(q: Q):
                 items=[
                     ui.choice_group(
                         "day",
-                        label="Day",
+                        label="Advent of Code 2020",
                         choices=[
                             ui.choice(name=d.num, label=title(d)) for d in days.values()
                         ],
@@ -40,7 +40,7 @@ async def serve(q: Q):
         solver_card = q.page.add(
             "solver",
             ui.form_card(
-                "9 1 2 8",
+                "8 1 2 8",
                 items=[
                     ui.choice_group(
                         "engine",
@@ -69,14 +69,10 @@ async def serve(q: Q):
                 ],
             ),
         )
-        title_card = q.page.add(
-            "title", ui.form_card(box="3 1 5 1", items=[ui.text_l("title", title(day))])
-        )
-
-        main_card = q.page.add(
-            "main",
+        tab_card = q.page.add(
+            "tab",
             ui.tab_card(
-                box="3 2 5 7",
+                box="3 1 5 1",
                 items=[
                     ui.tab("input", "Input Data"),
                     ui.tab("part_1", "Part 1"),
@@ -85,10 +81,11 @@ async def serve(q: Q):
             ),
         )
 
-    else:
-        q.page["sidebar"].items[0].choice_group.value = day.num
-        q.page["sidebar"].items[2].choice_group.value = engine.name
-        q.page["main"].items[0].text_xl.content = title(day)
-        q.page["main"].items[1].choice_group.value = part.num
+        form_card = q.page.add("form", ui.form_card(box="3 2 5 7", items=[]))
+
+    q.page["sidebar"].items[0].choice_group.value = day.num
+    q.page["sidebar"].items[2].choice_group.value = engine.name
+    # q.page["tab"].items[0].text_xl.content = title(day)
+    # q.page["tab"].items[1].choice_group.value = part.num
 
     await q.page.save()
