@@ -2,6 +2,7 @@ ARG MINIZINC_VERSION=2.5.3
 ARG PYTHON_VERSION=3.9
 ARG WAVE_VERSION=0.11.0
 ARG POETRY_VERSION=1.1.4
+ARG ZSH_THEME=dst
 
 FROM python:$PYTHON_VERSION-slim as python-base
 
@@ -56,6 +57,7 @@ RUN apt-get update \
     git \
     openssh-client \
     fonts-powerline \
+    make \
     gnupg2 \
     iproute2 \
     procps \
@@ -109,18 +111,20 @@ COPY --from=dependency-base $WAVE_PATH $WAVE_PATH
 COPY --from=minizinc-base /usr/local/share/minizinc /usr/local/share/minizinc
 COPY --from=minizinc-base /usr/local/bin/ /usr/local/bin/
 
-# venv already has runtime deps installed we get a quicker install
+# Run Poetry full install - this will use the runtime deps from the dependency-base layer
 WORKDIR $PYSETUP_PATH
 RUN poetry install
 
+# We now disable venv creation as the venv is already on PATH
+ENV POETRY_VIRTUALENVS_IN_PROJECT=false \
+    POETRY_VIRTUALENVS_CREATE=false
+
 # Install and set ZSH as the shell
+ARG ZSH_THEME
 RUN sh -c "$(wget -O- https://github.com/deluan/zsh-in-docker/releases/download/v1.1.1/zsh-in-docker.sh)" -- \
-    -t robbyrussell \
-    -p git
-
-RUN chsh -s $(which zsh) 
-
-WORKDIR /app
+    -t $ZSH_THEME \
+    -p git \
+    -p docker
 
 # 'production' stage uses the clean 'python-base' stage and copyies
 # in only our runtime deps that were installed in the 'dependency-base'
@@ -130,5 +134,3 @@ COPY --from=dependency-base $VENV_PATH $VENV_PATH
 COPY --from=dependency-base $WAVE_PATH $WAVE_PATH
 COPY --from=minizinc-base /usr/local/share/minizinc /usr/local/share/minizinc
 COPY --from=minizinc-base /usr/local/bin/ /usr/local/bin/
-
-WORKDIR /app

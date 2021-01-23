@@ -27,9 +27,7 @@ async def serve(q: Q):
                     ui.choice_group(
                         "day",
                         label="Advent of Code 2020",
-                        choices=[
-                            ui.choice(name=d.num, label=title(d)) for d in days.values()
-                        ],
+                        choices=[ui.choice(name=d.num, label=title(d)) for d in days.values()],
                         trigger=True,
                         value=day.num,
                     )

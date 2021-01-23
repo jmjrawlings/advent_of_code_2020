@@ -1,33 +1,52 @@
-// For format details, see https://aka.ms/devcontainer.json. For config options, see the README at:
-// https://github.com/microsoft/vscode-dev-containers/tree/v0.154.0/containers/python-3
 {
-	"name": "Python 3",
+	"name": "aoc2020",
+	// Use the top level dockerfile and 'dev' layer
 	"build": {
 		"dockerfile": "../Dockerfile",
 		"context": "..",
 		"target": "dev",
 		"args": {}
 	},
-	// Set *default* container specific settings.json values on container create.
+	// Custom mount location inside the container
+	"workspaceFolder": "/app",
+	"workspaceMount": "source=${localWorkspaceFolder},target=/app,type=bind,consistency=cached",
+	"mounts": [
+		// Mount a dedicated volume so extension to not have to be reinstalled on rebuild
+		"source=aoc2020-vscode-extensions,target=/root/.vscode-server/extensions,type=volume",
+		// Mount the hosting docker engine so you can use docker inside of docker
+		"source=/var/run/docker.sock,target=/var/run/docker.sock,type=bind"
+	],
+	// Default VSCode settings for the container
 	"settings": {
+		// ZSH as the shell
 		"terminal.integrated.shell.linux": "zsh",
-		"python.pythonPath": "/usr/local/bin/python",
+		// Pylance as the language server
+		"python.pythonPath": "python",
 		"python.languageServer": "Pylance",
+		// Typechecking with mypy
 		"python.linting.enabled": true,
 		"python.linting.pylintEnabled": false,
 		"python.linting.mypyEnabled": true,
-		"python.formatting.blackPath": "/usr/local/py-utils/bin/black",
-		"python.linting.mypyPath": "/usr/local/py-utils/bin/mypy",
+		"python.linting.mypyCategorySeverity.error": "Warning",
+		// Black as the code formatter
+		"python.formatting.provider": "black",
+		"python.formatting.blackPath": "black",
+		"python.formatting.blackArgs": [
+			"--fast",
+			"--line-length=100"
+		],
+		// Testing with pytest
+		"python.testing.unittestEnabled": false,
+		"python.testing.nosetestsEnabled": false,
+		"python.testing.pytestEnabled": true,
 		"python.testing.pytestArgs": [
 			"tests"
 		],
-		"python.linting.pycodestylePath": "/usr/local/py-utils/bin/pycodestyle",
-		"python.linting.pydocstylePath": "/usr/local/py-utils/bin/pydocstyle",
-		"python.linting.pylintPath": "/usr/local/py-utils/bin/pylint",
-		"python.formatting.provider": "black",
-		"python.testing.unittestEnabled": false,
-		"python.testing.nosetestsEnabled": false,
-		"python.testing.pytestEnabled": true
+		// Misc settings
+		"editor.detectIndentation": false,
+		"editor.insertSpaces": true,
+		"telemetry.enableTelemetry": false,
+		"telemetry.enableCrashReporter": false
 	},
 	// Add the IDs of extensions you want installed when the container is created.
 	"extensions": [
@@ -37,12 +56,6 @@
 		"aaron-bond.better-comments",
 		"njpwerner.autodocstring",
 		"ms-azuretools.vscode-docker"
-	],
-	"mounts": [
-		// Mount a dedicated volume so extension to not have to be reinstalled on rebuild
-		"source=aoc2020-vscode-extensions,target=/root/.vscode-server/extensions,type=volume",
-		// Mount the hosting docker engine so you can use docker inside of docker
-		"source=/var/run/docker.sock,target=/var/run/docker.sock,type=bind"
 	],
 	// Use 'forwardPorts' to make a list of ports inside the container available locally.
 	"forwardPorts": [
