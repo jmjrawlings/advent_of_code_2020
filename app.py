@@ -23,7 +23,7 @@ class State:
     threads: int = attr.ib(default=4)
     timeout: Duration = attr.ib(default=to_dur(seconds=10), converter=to_dur)
     tab: Tab = attr.ib(default=Tab.part_1, converter=Tab.parse)
-    solve: bool = attr.ib(default=False)
+    solving: bool = attr.ib(default=False)
 
     @property
     def day(self):
@@ -96,11 +96,7 @@ async def render(q: Q, app: State):
         "tab",
         ui.tab_card(
             box="3 1 5 1",
-            items=[
-                ui.tab("part_1", "Part 1"),
-                ui.tab("part_2", "Part 2"),
-                ui.tab("input", "Input Data"),
-            ],
+            items=[ui.tab("part_1", "Part 1"), ui.tab("part_2", "Part 2")],
             value=app.tab.name,
         ),
     )
@@ -113,7 +109,7 @@ async def render(q: Q, app: State):
     q.page.add("form", ui.vega_card(box="3 2 5 7", title="Viz", specification=c))
 
 
-async def sync(q, state):
+async def sync(q, state: State):
     for k, v in (q.args.__kv or {}).items():
         log.debug(f"{k} = {v}")
 
@@ -131,8 +127,11 @@ async def sync(q, state):
         state.tab = Tab.part_1
     elif q.args.part_2:
         state.tab = Tab.part_2
-    else:
-        state.tab = Tab.input
+
+    if q.args.solve and not state.solving:
+        state.solving = True
+        answer = await state.part.solve()
+        state.solving = False
 
 
 @app("/app")
