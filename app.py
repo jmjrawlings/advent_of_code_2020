@@ -1,25 +1,33 @@
 from datetime import time
+from enum import auto
 from h2o_wave import Q, main, app, ui
 from src import *
-
-days = {d.num: d for d in Day.s}
+import altair as alt
 
 
 def title(day: Day):
     return f"Day {day.num} - {day.title}"
 
 
+class Tab(Enumeration):
+    part_1 = auto()
+    part_2 = auto()
+    input = auto()
+
+
 @attr.s
-class App:
+class State:
     day_num: int = attr.ib(default=1)
     part_num: int = attr.ib(default=1)
     engine: Engine = attr.ib(default=Engine.CHUFFED, converter=Engine.parse)
     threads: int = attr.ib(default=4)
     timeout: Duration = attr.ib(default=to_dur(seconds=10), converter=to_dur)
+    tab: Tab = attr.ib(default=Tab.part_1, converter=Tab.parse)
+    solve: bool = attr.ib(default=False)
 
     @property
     def day(self):
-        return days[self.day_num]
+        return Day.s[self.day_num - 1]
 
     @property
     def part(self):
@@ -29,8 +37,10 @@ class App:
             return self.day.part_2
 
 
-async def setup(q: Q, app: App):
-    q.client.init = True
+state = State()
+
+
+async def render(q: Q, app: State):
     q.page.add(
         "days",
         ui.form_card(
@@ -39,9 +49,7 @@ async def setup(q: Q, app: App):
                 ui.choice_group(
                     "day",
                     label="Advent of Code 2020",
-                    choices=[
-                        ui.choice(name=d.num, label=title(d)) for d in days.values()
-                    ],
+                    choices=[ui.choice(name=d.num, label=title(d)) for d in Day.s],
                     trigger=True,
                     value=app.day_num,
                 )
@@ -72,12 +80,14 @@ async def setup(q: Q, app: App):
                 ui.separator(),
                 ui.slider(
                     "timeout",
-                    label="Timeout (mins)",
+                    label="Timeout (seconds)",
                     min=1,
                     max=60,
-                    value=int(app.timeout.total_minutes()),
+                    value=int(app.timeout.total_seconds()),
                     step=1,
                 ),
+                ui.separator(),
+                ui.button("solve", "Run Solver"),
             ],
         ),
     )
@@ -87,34 +97,56 @@ async def setup(q: Q, app: App):
         ui.tab_card(
             box="3 1 5 1",
             items=[
-                ui.tab("input", "Input Data"),
                 ui.tab("part_1", "Part 1"),
                 ui.tab("part_2", "Part 2"),
+                ui.tab("input", "Input Data"),
             ],
+            value=app.tab.name,
         ),
     )
+    c = (
+        alt.Chart(alt.InlineData(values=[dict(x=1, y=1)]))
+        .mark_line()
+        .encode(x="x:Q", y="y:Q")
+        .to_json()
+    )
+    q.page.add("form", ui.vega_card(box="3 2 5 7", title="Viz", specification=c))
 
-    q.page.add("form", ui.form_card(box="3 2 5 7", items=[]))
+
+async def sync(q, state):
+    for k, v in (q.args.__kv or {}).items():
+        log.debug(f"{k} = {v}")
+
+    if q.args.day:
+        state.day_num = q.args.day
+    if q.args.part:
+        state.part_num = q.args.part
+    if q.args.engine:
+        state.engine = q.args.engine
+    if q.args.threads:
+        state.threads = q.args.threads
+    if q.args.timeout:
+        state.timeout = q.args.timeout
+    if q.args.part_1:
+        state.tab = Tab.part_1
+    elif q.args.part_2:
+        state.tab = Tab.part_2
+    else:
+        state.tab = Tab.input
 
 
 @app("/app")
 async def serve(q: Q):
-
-    app = App(
-        day_num=q.args.day or 1,
-        part_num=q.args.part or 1,
-        engine=q.args.engine or Engine.GECODE,
-        threads=4,
-        timeout=to_dur(seconds=10),
-    )
-
-    print(app)
+    await sync(q, state)
 
     if not q.client.init:
-        await setup(q, app)
+        q.client.init = True
+        await render(q, state)
+        await q.page.save()
+        return
 
-    q.page["sidebar"].items[0].choice_group.value = app.day_num
-    q.page["sidebar"].items[2].choice_group.value = app.part_num
+    q.page["sidebar"].items[0].choice_group.value = state.day_num
+    q.page["sidebar"].items[2].choice_group.value = state.part_num
     # q.page["tab"].items[0].text_xl.content = title(day)
     # q.page["tab"].items[1].choice_group.value = part.num
 

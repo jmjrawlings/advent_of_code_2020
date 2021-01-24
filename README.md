@@ -8,4 +8,4 @@ The goals here are, in no particular order:
 - Practice working out of [Development Containers](https://code.visualstudio.com/docs/remote/containers)
 - Brush up on Docker
 - Promote MiniZinc and give newcomers some tangible examples to reference
-- Have fun!
+- Converge on a open source tech stack that allows a solo developer to solve gnarly optimisation problems and deliver a snappy front end to it
