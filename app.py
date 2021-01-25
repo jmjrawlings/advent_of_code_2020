@@ -145,8 +145,8 @@ async def solvex(q: Q, state: State):
         log.info(sol)
         q.page["answer"].items[0].value = f"{sol.iteration} - {sol.answer}"
         await q.page.save()
-        await q.sleep(0.2)
     state.solving = False
+    await q.page.save()
 
 
 async def sync(q: Q, state: State):
@@ -189,6 +189,7 @@ async def update(q: Q, state: State):
     slv.items[0].choice_group.value = state.engine.name
     slv.items[2].slider.value = int(state.threads)
     slv.items[4].slider.value = int(state.timeout.total_seconds())
+    slv.items[6].button.disabled = state.solving
 
 
 @app("/app")
