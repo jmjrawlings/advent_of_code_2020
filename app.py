@@ -3,6 +3,7 @@ from enum import auto
 from h2o_wave import Q, main, app, ui
 from src import *
 import altair as alt
+from concurrent.futures import ProcessPoolExecutor
 
 
 def title(day: Day):
@@ -24,6 +25,7 @@ class State:
     timeout: Duration = attr.ib(default=to_dur(seconds=10), converter=to_dur)
     tab: Tab = attr.ib(default=Tab.part_1, converter=Tab.parse)
     solving: bool = attr.ib(default=False)
+    answer: int = attr.ib(default=0)
 
     @property
     def day(self):
@@ -36,11 +38,30 @@ class State:
         else:
             return self.day.part_2
 
+    @classmethod
+    def fields(cls):
+        return attr.fields_dict(cls)
+
+    def __setattr__(self, name: str, value: Any) -> None:
+        """ Call attrs converts on setattribute """
+        field = self.fields().get(name)
+        if not field:
+            return super().__setattr__(name, value)
+
+        if field.converter:
+            value = field.converter(value)
+
+        return super().__setattr__(name, value)
+
 
 state = State()
 
 
 async def render(q: Q, app: State):
+    if q.client.init:
+        return
+
+    q.client.init = True
     q.page.add(
         "days",
         ui.form_card(
@@ -106,13 +127,29 @@ async def render(q: Q, app: State):
         .encode(x="x:Q", y="y:Q")
         .to_json()
     )
-    q.page.add("form", ui.vega_card(box="3 2 5 7", title="Viz", specification=c))
+    q.page.add("form", ui.vega_card(box="3 2 5 3", title="Viz", specification=c))
+    q.page.add(
+        "answer",
+        ui.stat_list_card(
+            "3 5 5 1", title="stats", items=[ui.stat("objective", state.answer)]
+        ),
+    )
+    await q.page.save()
 
 
-async def sync(q, state: State):
-    for k, v in (q.args.__kv or {}).items():
-        log.debug(f"{k} = {v}")
+async def solvex(q: Q, state: State):
+    lines = list(state.day.lines)
+    data = state.day.data(lines)
+    model = state.part.formulate(data)
+    async for sol in solutions(**model):
+        log.info(sol)
+        q.page["answer"].items[0].value = f"{sol.iteration} - {sol.answer}"
+        await q.page.save()
+        await q.sleep(0.2)
+    state.solving = False
 
+
+async def sync(q: Q, state: State):
     if q.args.day:
         state.day_num = q.args.day
     if q.args.part:
@@ -122,7 +159,7 @@ async def sync(q, state: State):
     if q.args.threads:
         state.threads = q.args.threads
     if q.args.timeout:
-        state.timeout = q.args.timeout
+        state.timeout = to_dur(seconds=q.args.timeout)
     if q.args.part_1:
         state.tab = Tab.part_1
     elif q.args.part_2:
@@ -130,23 +167,35 @@ async def sync(q, state: State):
 
     if q.args.solve and not state.solving:
         state.solving = True
-        answer = await state.part.solve()
-        state.solving = False
+        solver = asyncio.ensure_future(solvex(q, state))
+
+
+def log_args(q: Q):
+    for k, v in q.args.__dict__["__kv"].items():
+        log.debug(f"arg {k}:{type(v).__name__} = {v}")
+
+
+def log_app(app: State):
+    for k, v in app.__dict__.items():
+        log.info(f"app {k}:{type(v).__name__} = {v}")
+
+
+async def update(q: Q, state: State):
+    sb = q.page["sidebar"]
+    sb.items[0].choice_group.value = state.day_num
+    sb.items[2].choice_group.value = state.part_num
+
+    slv = q.page["solver"]
+    slv.items[0].choice_group.value = state.engine.name
+    slv.items[2].slider.value = int(state.threads)
+    slv.items[4].slider.value = int(state.timeout.total_seconds())
 
 
 @app("/app")
 async def serve(q: Q):
+    log_args(q)
     await sync(q, state)
-
-    if not q.client.init:
-        q.client.init = True
-        await render(q, state)
-        await q.page.save()
-        return
-
-    q.page["sidebar"].items[0].choice_group.value = state.day_num
-    q.page["sidebar"].items[2].choice_group.value = state.part_num
-    # q.page["tab"].items[0].text_xl.content = title(day)
-    # q.page["tab"].items[1].choice_group.value = part.num
-
+    log_app(state)
+    await render(q, state)
+    await update(q, state)
     await q.page.save()
