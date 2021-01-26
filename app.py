@@ -3,7 +3,6 @@ from enum import auto
 from h2o_wave import Q, main, app, ui
 from src import *
 import altair as alt
-from concurrent.futures import ProcessPoolExecutor
 
 
 def title(day: Day):
@@ -52,6 +51,16 @@ class State:
             value = field.converter(value)
 
         return super().__setattr__(name, value)
+
+
+def log_args(q: Q):
+    for k, v in q.args.__dict__["__kv"].items():
+        log.debug(f"arg {k}:{type(v).__name__} = {v}")
+
+
+def log_app(app: State):
+    for k, v in app.__dict__.items():
+        log.info(f"app {k}:{type(v).__name__} = {v}")
 
 
 state = State()
@@ -142,14 +151,16 @@ async def solvex(q: Q, state: State):
     data = state.day.data(lines)
     model = state.part.formulate(data)
     async for sol in solutions(**model):
-        log.info(sol)
-        q.page["answer"].items[0].value = f"{sol.iteration} - {sol.answer}"
-        await q.page.save()
+        state.answer = sol.answer
+        await update(q, state)
+
     state.solving = False
-    await q.page.save()
+    await update(q, state)
 
 
 async def sync(q: Q, state: State):
+    log_args(q)
+
     if q.args.day:
         state.day_num = q.args.day
     if q.args.part:
@@ -169,18 +180,11 @@ async def sync(q: Q, state: State):
         state.solving = True
         solver = asyncio.ensure_future(solvex(q, state))
 
-
-def log_args(q: Q):
-    for k, v in q.args.__dict__["__kv"].items():
-        log.debug(f"arg {k}:{type(v).__name__} = {v}")
-
-
-def log_app(app: State):
-    for k, v in app.__dict__.items():
-        log.info(f"app {k}:{type(v).__name__} = {v}")
+    log_app(state)
 
 
 async def update(q: Q, state: State):
+
     sb = q.page["sidebar"]
     sb.items[0].choice_group.value = state.day_num
     sb.items[2].choice_group.value = state.part_num
@@ -191,12 +195,14 @@ async def update(q: Q, state: State):
     slv.items[4].slider.value = int(state.timeout.total_seconds())
     slv.items[6].button.disabled = state.solving
 
+    q.page["answer"].items[0].value = f"{state.answer}"
+
+    await q.page.save()
+
 
 @app("/app")
 async def serve(q: Q):
-    log_args(q)
+
     await sync(q, state)
-    log_app(state)
     await render(q, state)
     await update(q, state)
-    await q.page.save()
