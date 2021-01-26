@@ -132,7 +132,7 @@ async def render(q: Q, app: State):
     await q.page.save()
 
 
-async def solvex(q: Q, state: State):
+async def solvex(q: Q, state: State, debounce=100):
 
     lines = list(state.day.lines)
     data = state.day.data(lines)
@@ -143,9 +143,14 @@ async def solvex(q: Q, state: State):
     opts.processes = state.threads
     opts.timeout = state.timeout
 
+    last = Solution()
+
     async for sol in solutions(opts=opts, **model):
         state.answer = sol.answer
-        await update(q, state)
+        delta = sol.iter_time.end - last.iter_time.end
+        if abs(delta.total_seconds() * 1000) >= debounce:
+            last = sol
+            await update(q, state)
 
     state.solving = False
     state.solve = None
@@ -176,7 +181,7 @@ async def sync(q: Q, state: State):
         log_app(state)
         return
 
-    if q.args.solve and state.solving:
+    if q.args.solve and state.solving and state.solve:
         log.error(f"Cancelling solver")
         state.solving = False
         state.solve.cancel()
