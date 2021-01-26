@@ -3,6 +3,7 @@ from enum import auto
 from h2o_wave import Q, main, app, ui
 from src import *
 import altair as alt
+from asyncio import Future
 
 
 def title(day: Day):
@@ -24,6 +25,7 @@ class State:
     timeout: Duration = attr.ib(default=to_dur(seconds=10), converter=to_dur)
     tab: Tab = attr.ib(default=Tab.part_1, converter=Tab.parse)
     solving: bool = attr.ib(default=False)
+    solve: Optional[Future[None]] = attr.ib(default=None)
     answer: int = attr.ib(default=0)
 
     @property
@@ -155,6 +157,7 @@ async def solvex(q: Q, state: State):
         await update(q, state)
 
     state.solving = False
+    state.solve = None
     await update(q, state)
 
 
@@ -178,7 +181,13 @@ async def sync(q: Q, state: State):
 
     if q.args.solve and not state.solving:
         state.solving = True
-        solver = asyncio.ensure_future(solvex(q, state))
+        state.solve = asyncio.ensure_future(solvex(q, state))
+
+    elif q.args.solve and state.solving and state.solve:
+        log.error(f"Cancelling solver")
+        state.solving = False
+        state.solve.cancel()
+        state.solve = None
 
     log_app(state)
 
@@ -193,7 +202,10 @@ async def update(q: Q, state: State):
     slv.items[0].choice_group.value = state.engine.name
     slv.items[2].slider.value = int(state.threads)
     slv.items[4].slider.value = int(state.timeout.total_seconds())
-    slv.items[6].button.disabled = state.solving
+    if state.solving:
+        slv.items[6].button.label = "Cancel"
+    else:
+        slv.items[6].button.label = "Solve"
 
     q.page["answer"].items[0].value = f"{state.answer}"
 
