@@ -32,7 +32,6 @@ from pendulum import (
     date,
     datetime,
     duration,
-    now,
     period,
 )
 from pendulum.tz.timezone import UTC, Timezone
@@ -166,6 +165,10 @@ def to_datetime(value, tz=UTC, warn_on_convert=True) -> DateTime:
             log.warning(f"{val} in tz {val.tz} was localized to {tz.name} as {ret}")
 
     return ret
+
+
+def now():
+    return to_datetime(pn.now())
 
 
 def to_date(value) -> Date:
@@ -353,6 +356,7 @@ async def solutions(model: str, opts: Arg[SolveOpts] = SolveOpts, name="", **kwa
     i = 0
     last = Solution()
     solve_start = now()
+    iter_start = solve_start
 
     try:
         async for result in instance.solutions(**solver_args):
@@ -363,8 +367,8 @@ async def solutions(model: str, opts: Arg[SolveOpts] = SolveOpts, name="", **kwa
 
             i += 1
             iter_end = now()
-            total_time = to_period(solve_start, iter_end)
-            iter_time = to_period(last.iter_time.end, iter_end)
+            total_time = pn.period(solve_start, iter_end)
+            iter_time = pn.period(iter_start, iter_end)
             obj = objective
 
             sol = Solution(
@@ -395,13 +399,16 @@ async def solutions(model: str, opts: Arg[SolveOpts] = SolveOpts, name="", **kwa
                 sol.delta = last.delta
                 sol.rdelta = last.rdelta
 
-            log.error(f"{iter_time.start} {iter_time.end}")
-            log.error(f"{total_time.start} {total_time.end}")
+            # log.error(f"{iter_time.start} {iter_time.end}")
+            # log.error(f"{total_time.start} {total_time.end}")
+            assert sol.total_time.start == solve_start
 
             log.debug(
                 f"i={sol.iteration} obj={sol.answer} iter={to_elapsed(iter_time)} total={to_elapsed(total_time)}"
             )
             last = sol
+            iter_start = iter_end
+
             yield sol
 
     except ProcessLookupError as e:
