@@ -1,5 +1,6 @@
 from datetime import time
 from enum import auto
+from os import stat
 from h2o_wave import Q, main, app, ui
 from src import *
 import altair as alt
@@ -17,7 +18,7 @@ class Tab(Enumeration):
 
 
 @attr.s
-class State:
+class State(Base):
     day_num: int = attr.ib(default=1)
     part_num: int = attr.ib(default=1)
     engine: Engine = attr.ib(default=Engine.CHUFFED, converter=Engine.parse)
@@ -38,21 +39,6 @@ class State:
             return self.day.part_1
         else:
             return self.day.part_2
-
-    @classmethod
-    def fields(cls):
-        return attr.fields_dict(cls)
-
-    def __setattr__(self, name: str, value: Any) -> None:
-        """ Call attrs converts on setattribute """
-        field = self.fields().get(name)
-        if not field:
-            return super().__setattr__(name, value)
-
-        if field.converter:
-            value = field.converter(value)
-
-        return super().__setattr__(name, value)
 
 
 def log_args(q: Q):
@@ -149,10 +135,17 @@ async def render(q: Q, app: State):
 
 
 async def solvex(q: Q, state: State):
+
     lines = list(state.day.lines)
     data = state.day.data(lines)
     model = state.part.formulate(data)
-    async for sol in solutions(**model):
+
+    opts = SolveOpts()
+    opts.engine = state.engine
+    opts.processes = state.threads
+    opts.timeout = state.timeout
+
+    async for sol in solutions(opts=opts, **model):
         state.answer = sol.answer
         await update(q, state)
 
@@ -182,14 +175,16 @@ async def sync(q: Q, state: State):
     if q.args.solve and not state.solving:
         state.solving = True
         state.solve = asyncio.ensure_future(solvex(q, state))
+        log_app(state)
+        return
 
-    elif q.args.solve and state.solving and state.solve:
+    if q.args.solve and state.solving:
         log.error(f"Cancelling solver")
         state.solving = False
         state.solve.cancel()
         state.solve = None
-
-    log_app(state)
+        log_app(state)
+        return
 
 
 async def update(q: Q, state: State):
@@ -202,10 +197,7 @@ async def update(q: Q, state: State):
     slv.items[0].choice_group.value = state.engine.name
     slv.items[2].slider.value = int(state.threads)
     slv.items[4].slider.value = int(state.timeout.total_seconds())
-    if state.solving:
-        slv.items[6].button.label = "Cancel"
-    else:
-        slv.items[6].button.label = "Solve"
+    slv.items[6].button.label = "Cancel" if state.solving else "Solve"
 
     q.page["answer"].items[0].value = f"{state.answer}"
 

@@ -131,7 +131,7 @@ def to_elapsed(obj: Any) -> str:
         ret = f"{millis}ms"
 
     elif micros:
-        ret = f"{millis}μs"
+        ret = f"{micros}μs"
 
     else:
         ret = "0s"
@@ -195,6 +195,8 @@ def to_period(*args, **kwargs) -> Period:
     if s is not None and e is not None:
         st = to_datetime(s)
         et = to_datetime(e)
+        if st > et:
+            raise ValueError(f"{st} > {et}")
         return Period(st, et, absolute=True)
 
     if s is not None and d is not None:
@@ -254,6 +256,23 @@ log = setup_logger(__name__)
 E = TypeVar("E", bound=Enum)
 
 
+class Base:
+    @classmethod
+    def fields(cls):
+        return attr.fields_dict(cls)
+
+    def __setattr__(self, name: str, value: Any) -> None:
+        """ Call attrs converts on setattribute """
+        field = self.fields().get(name)
+        if not field:
+            return super().__setattr__(name, value)
+
+        if field.converter:
+            value = field.converter(value)
+
+        return super().__setattr__(name, value)
+
+
 class Enumeration(Enum):
     @classmethod
     def parse(cls: Type[E], x: Any) -> E:
@@ -272,7 +291,7 @@ class Engine(Enumeration):
 
 
 @attr.s
-class SolveOpts:
+class SolveOpts(Base):
     """ Solving Options """
 
     # fmt: off
@@ -284,13 +303,13 @@ class SolveOpts:
 
 
 @attr.s
-class Solution:
+class Solution(Base):
 
     # fmt: off
     iteration  : int             = attr.ib(default=1)
     status     : Status          = attr.ib(default=Status.UNKNOWN)
-    total_time : Period          = attr.ib(converter=to_period, factory=to_period)
-    iter_time  : Period          = attr.ib(converter=to_period, factory=to_period)
+    total_time : Period          = attr.ib(factory=to_period)
+    iter_time  : Period          = attr.ib(factory=to_period)
     answer     : Optional[int]   = attr.ib(default=None)
     bound      : Optional[int]   = attr.ib(default=None)
     gap        : Optional[int]   = attr.ib(default=None)
@@ -315,6 +334,7 @@ async def solutions(model: str, opts: Arg[SolveOpts] = SolveOpts, name="", **kwa
     model_.add_string(model)
 
     opts = arg(SolveOpts, opts)
+    log.info(f"solve {opts} opts")
 
     solver = Solver.lookup(opts.engine.value)
     instance = Instance(solver, model_)
@@ -332,44 +352,62 @@ async def solutions(model: str, opts: Arg[SolveOpts] = SolveOpts, name="", **kwa
 
     i = 0
     last = Solution()
+    solve_start = now()
 
-    async for result in instance.solutions(**solver_args):
-        res: Result = result
+    try:
+        async for result in instance.solutions(**solver_args):
+            status = result.status
+            objective = result.objective
+            values = result.solution
+            stats = result.statistics
 
-        i += 1
+            i += 1
+            iter_end = now()
+            total_time = to_period(solve_start, iter_end)
+            iter_time = to_period(last.iter_time.end, iter_end)
+            obj = objective
 
-        sol = Solution(
-            total_time=now() - last.total_time.start,
-            iter_time=now() - last.iter_time.end,
-            answer=res.objective,
-            status=res.status,
-            statistics=res.statistics,
-            iteration=i,
-            data=res.solution,
-        )
+            sol = Solution(
+                total_time=total_time,
+                iter_time=iter_time,
+                answer=obj,
+                status=status,
+                statistics=stats,
+                iteration=i,
+                data=values,
+            )
 
-        bound = res.statistics.get("objectiveBound", None)
-        if bound is not None and isfinite(bound):
-            sol.bound = int(bound)
-            sol.gap = abs(sol.answer - sol.bound)  # type: ignore
-            sol.rgap = None if not sol.bound else (sol.gap / sol.bound)
-            if last.gap is not None:
-                sol.delta = sol.gap - last.gap
-                sol.rdelta = sol.rgap - last.rgap
+            bound = stats.get("objectiveBound", None)
+            if (bound is not None) and isfinite(bound):
+                sol.bound = int(bound)
+                sol.gap = abs(sol.answer - sol.bound)  # type: ignore
+                sol.rgap = None if not sol.bound else (sol.gap / sol.bound)
+                if last.gap is not None:
+                    sol.delta = sol.gap - last.gap
+                    sol.rdelta = sol.rgap - last.rgap
 
-        if res.solution is None:
-            sol.data = last.data
-            sol.answer = last.answer
-            sol.gap = last.gap
-            sol.rgap = last.rgap
-            sol.bound = last.bound
-            sol.delta = last.delta
-            sol.rdelta = last.rdelta
+            if not values:
+                sol.data = last.data
+                sol.answer = last.answer
+                sol.gap = last.gap
+                sol.rgap = last.rgap
+                sol.bound = last.bound
+                sol.delta = last.delta
+                sol.rdelta = last.rdelta
 
-        log.debug(f"{name} {sol!s}")
-        yield sol
+            log.error(f"{iter_time.start} {iter_time.end}")
+            log.error(f"{total_time.start} {total_time.end}")
 
-        last = sol
+            log.debug(
+                f"i={sol.iteration} obj={sol.answer} iter={to_elapsed(iter_time)} total={to_elapsed(total_time)}"
+            )
+            last = sol
+            yield sol
+
+    except ProcessLookupError as e:
+        pass
+
+    log.info(f"solve {opts} fin")
 
 
 async def solve(model: str, opts: Arg[SolveOpts] = SolveOpts, **kwargs):
