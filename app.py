@@ -1,4 +1,5 @@
 from enum import auto
+from os import sep
 from h2o_wave import Q, main, app, ui
 from src import *
 import altair as alt
@@ -59,28 +60,47 @@ async def render(q: Q, app: State):
         return
 
     app.init = True
+
     q.page.add(
-        "days",
-        ui.form_card(
-            box="1 1 2 8",
-            items=[
-                # ui.tab("tab", items=[]),
-                ui.choice_group(
-                    "day",
-                    label="Advent of Code 2020",
-                    choices=[ui.choice(name=d.num, label=title(d)) for d in Day.s],
-                    trigger=True,
-                    value=app.day_num,
+        "header",
+        ui.header_card(
+            # Place card in the header zone, regardless of viewport size.
+            box="1 1 8 1",
+            title="Advent of Code 2020",
+            subtitle="Solution browser and interactive playground",
+            nav=[
+                ui.nav_group(
+                    "Days",
+                    collapsed=False,
+                    items=[ui.nav_item(d.num, f"{d.num} - {d.title}") for d in Day.s],
+                ),
+                ui.nav_group(
+                    "Settings",
+                    items=[
+                        ui.nav_item(name="#about", label="About"),
+                        ui.nav_item(name="#support", label="Support"),
+                    ],
                 ),
             ],
         ),
     )
 
     q.page.add(
-        "solver",
+        "settings",
         ui.form_card(
-            "8 1 2 8",
+            "1 2 2 7",
             items=[
+                ui.choice_group(
+                    "part",
+                    label="Part",
+                    choices=[
+                        ui.choice(1, "Part 1"),
+                        ui.choice(2, "Part 2"),
+                    ],
+                    trigger=True,
+                    value=app.day_num,
+                ),
+                ui.separator(),
                 ui.choice_group(
                     "engine",
                     label="Solver Engine",
@@ -113,27 +133,15 @@ async def render(q: Q, app: State):
         ),
     )
 
-    q.page.add(
-        "tab",
-        ui.tab_card(
-            box="3 1 5 1",
-            items=[ui.tab("part_1", "Part 1"), ui.tab("part_2", "Part 2")],
-            value=app.tab.name,
-        ),
-    )
     c = (
         alt.Chart(alt.InlineData(values=[dict(x=1, y=1)]))
         .mark_line()
         .encode(x="x:Q", y="y:Q")
+        .properties(width="container", height="container")
+        .interactive()
         .to_json()
     )
     q.page.add("form", ui.vega_card(box="3 2 5 3", title="Viz", specification=c))
-    q.page.add(
-        "answer",
-        ui.stat_list_card(
-            "3 5 5 1", title="stats", items=[ui.stat("objective", state.answer)]
-        ),
-    )
     await q.page.save()
 
 
@@ -176,8 +184,8 @@ async def sync(q: Q, state: State):
 
     if q.args.solve and not state.solving:
         state.solving = True
-        state.solve = asyncio.ensure_future(solvex(q, state))
-        log_app(state)
+        task = asyncio.ensure_future(solvex(q, state))
+        state.solve = task
         return
 
     if q.args.solve and state.solving and state.solve:
@@ -185,23 +193,21 @@ async def sync(q: Q, state: State):
         state.solving = False
         state.solve.cancel()
         state.solve = None
-        log_app(state)
         return
 
 
 async def update(q: Q, state: State):
 
-    sb = q.page["sidebar"]
-    sb.items[0].choice_group.value = state.day_num
-    sb.items[2].choice_group.value = state.part_num
+    p = q.page["sidebar"]
+    p.items[0].choice_group.value = state.day_num
+    p.items[2].choice_group.value = state.part_num
 
-    slv = q.page["solver"]
-    slv.items[0].choice_group.value = state.opts.engine.name
-    slv.items[2].slider.value = int(state.opts.processes)
-    slv.items[4].slider.value = int(state.opts.timeout.total_seconds())
-    slv.items[6].button.label = "Cancel" if state.solving else "Solve"
-
-    q.page["answer"].items[0].value = f"{state.answer}"
+    p = q.page["settings"]
+    p.items[0].choice_group.value = state.part_num
+    p.items[2].choice_group.value = state.opts.engine.name
+    p.items[4].slider.value = int(state.opts.processes)
+    p.items[6].slider.value = int(state.opts.timeout.total_seconds())
+    p.items[8].button.label = "Cancel" if state.solving else "Solve"
 
     await q.page.save()
 
