@@ -298,10 +298,10 @@ class SolveOpts(Base):
     """ Solving Options """
 
     # fmt: off
-    intermediate : bool      = attr.ib(default=False)
-    engine       : Engine    = attr.ib(default=Engine.GECODE, converter=Engine.parse) # type: ignore
-    timeout      : Duration  = attr.ib(factory=to_dur, converter=to_dur)
-    processes    : int       = attr.ib(default=4)
+    intermediate : bool     = attr.ib(default=False)
+    engine       : Engine   = attr.ib(default=Engine.GECODE, converter=Engine.parse) # type: ignore
+    timeout      : Duration = attr.ib(factory=to_dur, converter=to_dur)
+    processes    : int      = attr.ib(default=4)
     # fmt: on
 
 

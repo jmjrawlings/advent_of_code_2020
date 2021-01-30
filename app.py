@@ -21,9 +21,7 @@ class State(Base):
     # fmt:off
     day_num : int       = attr.ib(default=1)
     part_num: int       = attr.ib(default=1)
-    engine  : Engine    = attr.ib(default=Engine.CHUFFED, converter=Engine.parse)# type:ignore
-    threads : int       = attr.ib(default=4)
-    timeout : Duration  = attr.ib(default=to_dur(seconds=10), converter=to_dur)
+    opts    : SolveOpts = attr.ib(factory = SolveOpts)
     tab     : Tab       = attr.ib(default=Tab.part_1, converter=Tab.parse) # type:ignore
     solving : bool      = attr.ib(default=False)
     answer  : int       = attr.ib(default=0)
@@ -86,15 +84,15 @@ async def render(q: Q, app: State):
                     "engine",
                     label="Solver Engine",
                     choices=[ui.choice(name=e.name) for e in Engine],
-                    value=app.engine.name,
+                    value=app.opts.engine.name,
                 ),
                 ui.separator(),
                 ui.slider(
-                    "threads",
-                    label="Max CPU Theads",
+                    "processes",
+                    label="Max Processes",
                     min=1,
                     max=48,
-                    value=app.threads,
+                    value=app.opts.processes,
                     step=1,
                 ),
                 ui.separator(),
@@ -103,7 +101,7 @@ async def render(q: Q, app: State):
                     label="Timeout (seconds)",
                     min=1,
                     max=60,
-                    value=int(app.timeout.total_seconds()),
+                    value=int(app.opts.timeout.total_seconds()),
                     step=1,
                 ),
                 ui.separator(),
@@ -141,15 +139,9 @@ async def solvex(q: Q, state: State, debounce=100):
     lines = list(state.day.lines)
     data = state.day.data(lines)
     model = state.part.formulate(data)
-
-    opts = SolveOpts()
-    opts.engine = state.engine
-    opts.processes = state.threads
-    opts.timeout = state.timeout
-
     last = Solution()
 
-    async for sol in solutions(opts=opts, **model):
+    async for sol in solutions(opts=state.opts, **model):
         state.answer = sol.answer
         delta = sol.iter_time.end - last.iter_time.end
         if abs(delta.total_seconds() * 1000) >= debounce:
@@ -169,11 +161,11 @@ async def sync(q: Q, state: State):
     if q.args.part:
         state.part_num = q.args.part
     if q.args.engine:
-        state.engine = q.args.engine
-    if q.args.threads:
-        state.threads = q.args.threads
+        state.opts.engine = q.args.engine
+    if q.args.processes:
+        state.opts.processes = q.args.processes
     if q.args.timeout:
-        state.timeout = to_dur(seconds=q.args.timeout)
+        state.opts.timeout = to_dur(seconds=q.args.timeout)
     if q.args.part_1:
         state.tab = Tab.part_1
     elif q.args.part_2:
@@ -201,9 +193,9 @@ async def update(q: Q, state: State):
     sb.items[2].choice_group.value = state.part_num
 
     slv = q.page["solver"]
-    slv.items[0].choice_group.value = state.engine.name
-    slv.items[2].slider.value = int(state.threads)
-    slv.items[4].slider.value = int(state.timeout.total_seconds())
+    slv.items[0].choice_group.value = state.opts.engine.name
+    slv.items[2].slider.value = int(state.opts.processes)
+    slv.items[4].slider.value = int(state.opts.timeout.total_seconds())
     slv.items[6].button.label = "Cancel" if state.solving else "Solve"
 
     q.page["answer"].items[0].value = f"{state.answer}"
