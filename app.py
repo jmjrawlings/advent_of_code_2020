@@ -17,15 +17,18 @@ class Tab(Enumeration):
 
 @attr.s
 class State(Base):
-    day_num: int = attr.ib(default=1)
-    part_num: int = attr.ib(default=1)
-    engine: Engine = attr.ib(default=Engine.CHUFFED, converter=Engine.parse)
-    threads: int = attr.ib(default=4)
-    timeout: Duration = attr.ib(default=to_dur(seconds=10), converter=to_dur)
-    tab: Tab = attr.ib(default=Tab.part_1, converter=Tab.parse)
-    solving: bool = attr.ib(default=False)
-    solve: Optional[Future[None]] = attr.ib(default=None)
-    answer: int = attr.ib(default=0)
+
+    # fmt:off
+    day_num : int       = attr.ib(default=1)
+    part_num: int       = attr.ib(default=1)
+    engine  : Engine    = attr.ib(default=Engine.CHUFFED, converter=Engine.parse)# type:ignore
+    threads : int       = attr.ib(default=4)
+    timeout : Duration  = attr.ib(default=to_dur(seconds=10), converter=to_dur)
+    tab     : Tab       = attr.ib(default=Tab.part_1, converter=Tab.parse) # type:ignore
+    solving : bool      = attr.ib(default=False)
+    answer  : int       = attr.ib(default=0)
+    solve   : Optional[Future[None]] = attr.ib(default=None)
+    # fmt:on
 
     @property
     def day(self):
@@ -62,13 +65,14 @@ async def render(q: Q, app: State):
         ui.form_card(
             box="1 1 2 8",
             items=[
+                # ui.tab("tab", items=[]),
                 ui.choice_group(
                     "day",
                     label="Advent of Code 2020",
                     choices=[ui.choice(name=d.num, label=title(d)) for d in Day.s],
                     trigger=True,
                     value=app.day_num,
-                )
+                ),
             ],
         ),
     )

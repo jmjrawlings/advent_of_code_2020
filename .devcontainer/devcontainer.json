@@ -1,5 +1,6 @@
 {
     "name": "aoc2020",
+
     // Use the top level dockerfile and 'dev' layer
     "build": {
         "dockerfile": "../Dockerfile",
@@ -7,40 +8,50 @@
         "target": "dev",
         "args": {}
     },
+
     // Custom mount location inside the container
     "workspaceFolder": "/app",
     "workspaceMount": "source=${localWorkspaceFolder},target=/app,type=bind,consistency=cached",
+
+    // Custom mount location inside the container
     "mounts": [
         // Mount a dedicated volume so extension to not have to be reinstalled on rebuild
         "source=aoc2020-vscode-extensions,target=/root/.vscode-server/extensions,type=volume",
         // Mount the hosting docker engine so you can use docker inside of docker
         "source=/var/run/docker.sock,target=/var/run/docker.sock,type=bind"
     ],
+
     // Default VSCode settings for the container
     "settings": {
+
         // ZSH as the shell
         "terminal.integrated.shell.linux": "zsh",
+        
         // Pylance as the language server
         "python.pythonPath": "python",
         "python.languageServer": "Pylance",
+
         // Typechecking with mypy
         "python.linting.enabled": true,
         "python.linting.pylintEnabled": false,
         "python.linting.mypyEnabled": true,
         "python.linting.mypyCategorySeverity.error": "Warning",
+
         // Black as the code formatter
         "python.formatting.provider": "black",
         "python.formatting.blackPath": "black",
-        "python.formatting.blackArgs": [
-            "--fast"
-        ],
+        "python.formatting.blackArgs": ["--fast"],
+        "editor.formatOnSave": false,
+        "[python]": {
+            "editor.formatOnSave": true
+        },
+
         // Testing with pytest
         "python.testing.unittestEnabled": false,
         "python.testing.nosetestsEnabled": false,
         "python.testing.pytestEnabled": true,
-        "python.testing.pytestArgs": [
-            "tests"
-        ],
+        "python.testing.pytestArgs": ["tests"],
+
         // Misc settings
         "editor.detectIndentation": false,
         "editor.insertSpaces": true,
@@ -61,6 +72,7 @@
         10101,
         8000
     ],
+    // I don't know what this is for
     "runArgs": [
         "--init"
     ],

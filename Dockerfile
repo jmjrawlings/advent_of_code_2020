@@ -44,7 +44,7 @@ RUN curl -sSL https://raw.githubusercontent.com/python-poetry/poetry/master/get-
 # and install only runtime deps using poetry
 WORKDIR $PYSETUP_PATH
 COPY ./poetry.lock ./pyproject.toml ./
-RUN poetry install --no-dev
+RUN poetry install --no-dev --no-root
 
 # 'development' stage installs all dev deps and can be used to develop code.
 # For example using docker-compose to mount local volume under /app
@@ -113,7 +113,7 @@ COPY --from=minizinc-base /usr/local/bin/ /usr/local/bin/
 
 # Run Poetry full install - this will use the runtime deps from the dependency-base layer
 WORKDIR $PYSETUP_PATH
-RUN poetry install
+RUN poetry install --no-root
 
 # We now disable venv creation as the venv is already on PATH
 ENV POETRY_VIRTUALENVS_IN_PROJECT=false \
