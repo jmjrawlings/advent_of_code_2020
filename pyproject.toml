@@ -2,7 +2,7 @@
 name = "aoc2020"
 version = "0.1.0"
 description = "Solutions to the AOC2020 problems using MiniZinc"
-authors = ["Justin Rawlings <hrkn@pm.me>"]
+authors = ["Justin Rawlings"]
 
 [tool.poetry.dependencies]
 python = "^3.9"
@@ -24,7 +24,6 @@ ipython = "^7.19.0"
 jedi = "0.17.2"
 
 [tool.pytest.ini_options]
-log_cli_level = "info"
 addopts = "-v"
 testpaths = [
     "tests"

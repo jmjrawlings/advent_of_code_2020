@@ -1,3 +1,4 @@
-.devcontainer
-.dockerignore
+.*
 *.state
+docs
+__pycache__
