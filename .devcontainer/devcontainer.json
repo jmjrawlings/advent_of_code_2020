@@ -42,7 +42,8 @@
         "python.formatting.blackArgs": ["--fast"],
         "editor.formatOnSave": false,
         "[python]": {
-            "editor.formatOnSave": true
+            "editor.formatOnSave": true,
+            "editor.formatOnPaste":false
         },
 
         // Testing with pytest

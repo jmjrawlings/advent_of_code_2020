@@ -19,6 +19,7 @@ class Tab(Enumeration):
 class State(Base):
 
     # fmt:off
+    init    : bool      = attr.ib(default=False)
     day_num : int       = attr.ib(default=1)
     part_num: int       = attr.ib(default=1)
     opts    : SolveOpts = attr.ib(factory = SolveOpts)
@@ -54,10 +55,10 @@ state = State()
 
 
 async def render(q: Q, app: State):
-    if q.client.init:
+    if app.init:
         return
 
-    q.client.init = True
+    app.init = True
     q.page.add(
         "days",
         ui.form_card(
@@ -94,6 +95,7 @@ async def render(q: Q, app: State):
                     max=48,
                     value=app.opts.processes,
                     step=1,
+                    tooltip="The maximum number of processes to use.  Only applicable for certain solver engines.",
                 ),
                 ui.separator(),
                 ui.slider(
@@ -103,6 +105,7 @@ async def render(q: Q, app: State):
                     max=60,
                     value=int(app.opts.timeout.total_seconds()),
                     step=1,
+                    tooltip="The maximum amount of time the solver will run for before terminating.",
                 ),
                 ui.separator(),
                 ui.button("solve", "Run Solver"),
