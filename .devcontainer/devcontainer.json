@@ -58,6 +58,7 @@
         "telemetry.enableTelemetry": false,
         "telemetry.enableCrashReporter": false
     },
+    
     // Add the IDs of extensions you want installed when the container is created.
     "extensions": [
         "ms-python.python",
@@ -67,11 +68,13 @@
         "njpwerner.autodocstring",
         "ms-azuretools.vscode-docker"
     ],
+
     // Wave Server + App ports
     "forwardPorts": [
         10101,
         8000
     ],
+
     // I don't know what this is for
     "runArgs": [
         "--init"
