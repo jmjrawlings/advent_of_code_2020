@@ -382,13 +382,13 @@ async def solutions(model: str, opts: Arg[SolveOpts] = SolveOpts, name="", **kwa
             )
 
             bound = stats.get("objectiveBound", None)
-            if (bound is not None) and isfinite(bound):
+            if (bound is not None) and isfinite(bound) and (sol.answer is not None):
                 sol.bound = int(bound)
-                sol.gap = abs(sol.answer - sol.bound)  # type: ignore
+                sol.gap = abs(sol.answer - sol.bound)
                 sol.rgap = None if not sol.bound else (sol.gap / sol.bound)
-                if last.gap is not None:
+                if (last.gap is not None) and (last.rgap is not None):
                     sol.delta = sol.gap - last.gap
-                    sol.rdelta = sol.rgap - last.rgap  # type:ignore
+                    sol.rdelta = sol.rgap - last.rgap
 
             if not values:
                 sol.data = last.data

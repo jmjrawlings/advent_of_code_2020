@@ -72,7 +72,9 @@ async def render(q: Q, app: State):
                 ui.nav_group(
                     "Days",
                     collapsed=False,
-                    items=[ui.nav_item(d.num, f"{d.num} - {d.title}") for d in Day.s],
+                    items=[
+                        ui.nav_item(f"#{d.num}", f"{d.num} - {d.title}") for d in Day.s
+                    ],
                 ),
                 ui.nav_group(
                     "Settings",
@@ -92,7 +94,7 @@ async def render(q: Q, app: State):
             items=[
                 ui.choice_group(
                     "part",
-                    label="Part",
+                    label=title(app.day),
                     choices=[
                         ui.choice(1, "Part 1"),
                         ui.choice(2, "Part 2"),
@@ -101,7 +103,7 @@ async def render(q: Q, app: State):
                     value=app.day_num,
                 ),
                 ui.separator(),
-                ui.choice_group(
+                ui.dropdown(
                     "engine",
                     label="Solver Engine",
                     choices=[ui.choice(name=e.name) for e in Engine],
@@ -112,7 +114,7 @@ async def render(q: Q, app: State):
                     "processes",
                     label="Max Processes",
                     min=1,
-                    max=48,
+                    max=12,
                     value=app.opts.processes,
                     step=1,
                     tooltip="The maximum number of processes to use.  Only applicable for certain solver engines.",
@@ -182,6 +184,11 @@ async def sync(q: Q, state: State):
     elif q.args.part_2:
         state.tab = Tab.part_2
 
+    if "#" in q.args:
+        x = str(q.args["#"])
+        if x.isnumeric():
+            state.day_num = int(x)
+
     if q.args.solve and not state.solving:
         state.solving = True
         task = asyncio.ensure_future(solvex(q, state))
@@ -198,13 +205,13 @@ async def sync(q: Q, state: State):
 
 async def update(q: Q, state: State):
 
-    p = q.page["sidebar"]
-    p.items[0].choice_group.value = state.day_num
-    p.items[2].choice_group.value = state.part_num
+    # p.items[0].choice_group.value = state.day_num
+    # p.items[2].choice_group.value = state.part_num
 
     p = q.page["settings"]
+    p.items[0].choice_group.label = title(state.day)
     p.items[0].choice_group.value = state.part_num
-    p.items[2].choice_group.value = state.opts.engine.name
+    p.items[2].dropdown.value = state.opts.engine.name
     p.items[4].slider.value = int(state.opts.processes)
     p.items[6].slider.value = int(state.opts.timeout.total_seconds())
     p.items[8].button.label = "Cancel" if state.solving else "Solve"
