@@ -3,6 +3,7 @@ from os import sep
 from h2o_wave import Q, main, app, ui
 from src import *
 import altair as alt
+import textwrap
 from asyncio import Future
 
 
@@ -54,6 +55,17 @@ def log_app(app: State):
 
 state = State()
 
+rows = 8
+cols = 12
+
+
+def box(x0=1, y0=1, dx=cols, dy=rows, x1=None, y1=None):
+    if x1 is not None:
+        dx = x1 - x0
+    if y1 is not None:
+        dy = y1 - y0
+    return f"{x0} {y0} {dx} {dy}"
+
 
 async def render(q: Q, app: State):
     if app.init:
@@ -61,28 +73,23 @@ async def render(q: Q, app: State):
 
     app.init = True
 
+    q.page.add("meta", ui.meta_card(box="", title="Advent of Code 2020"))
+
     q.page.add(
         "header",
         ui.header_card(
             # Place card in the header zone, regardless of viewport size.
-            box="1 1 8 1",
+            box=box(dy=1),
             title="Advent of Code 2020",
             subtitle="Solution browser and interactive playground",
             nav=[
                 ui.nav_group(
-                    "Days",
+                    "Problems",
                     collapsed=False,
                     items=[
                         ui.nav_item(f"#{d.num}", f"{d.num} - {d.title}") for d in Day.s
                     ],
-                ),
-                ui.nav_group(
-                    "Settings",
-                    items=[
-                        ui.nav_item(name="#about", label="About"),
-                        ui.nav_item(name="#support", label="Support"),
-                    ],
-                ),
+                )
             ],
         ),
     )
@@ -90,7 +97,7 @@ async def render(q: Q, app: State):
     q.page.add(
         "settings",
         ui.form_card(
-            "1 2 2 7",
+            box=box(1, 2, 2, 7),
             items=[
                 ui.choice_group(
                     "part",
@@ -143,7 +150,22 @@ async def render(q: Q, app: State):
         .interactive()
         .to_json()
     )
-    q.page.add("form", ui.vega_card(box="3 2 5 3", title="Viz", specification=c))
+    q.page.add(
+        "model",
+        # ui.form_card(
+        #     box="3 2 5 7",
+        #     items=[
+        #         ui.expander(
+        #             "blurb",
+        #             label="Blurb",
+        #             expanded=True,
+        #             items=[ui.text(app.part.blurb)],
+        #         )
+        #     ],
+        # ),
+        ui.markdown_card(box(3, 2, 5, 7), title="Blurb", content=""),
+    )
+    q.page.add("form", ui.vega_card(box="8 2 5 7", title="Viz", specification=c))
     await q.page.save()
 
 
@@ -179,10 +201,8 @@ async def sync(q: Q, state: State):
         state.opts.processes = q.args.processes
     if q.args.timeout:
         state.opts.timeout = to_dur(seconds=q.args.timeout)
-    if q.args.part_1:
-        state.tab = Tab.part_1
-    elif q.args.part_2:
-        state.tab = Tab.part_2
+
+    state.part_num = 1 if q.args.part == 1 else 2
 
     if "#" in q.args:
         x = str(q.args["#"])
@@ -215,6 +235,22 @@ async def update(q: Q, state: State):
     p.items[4].slider.value = int(state.opts.processes)
     p.items[6].slider.value = int(state.opts.timeout.total_seconds())
     p.items[8].button.label = "Cancel" if state.solving else "Solve"
+
+    p = q.page["model"]
+    wrapper = textwrap.TextWrapper(
+        width=70, break_long_words=False, replace_whitespace=False
+    )
+    if state.part_num == 1:
+        text = state.part.blurb
+    else:
+        text = state.day.part_1.blurb + "\n\n" + state.day.part_2.blurb
+
+    text = textwrap.dedent(text)
+    text = "\n".join(wrapper.wrap(text))
+    p.content = text
+    p.title = state.part.title
+    # "\r".join(textwrap.wrap(state.part.blurb, width=80)).replace("\t", " ")
+    # p.title = state.part.title
 
     await q.page.save()
 
