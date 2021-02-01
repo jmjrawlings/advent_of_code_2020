@@ -4,6 +4,8 @@ ARG WAVE_VERSION=0.11.0
 ARG POETRY_VERSION=1.1.4
 ARG ZSH_THEME=dst
 
+FROM minizinc/minizinc:$MINIZINC_VERSION as minizinc-base
+
 FROM python:$PYTHON_VERSION-slim as python-base
 
 ENV PYTHONUNBUFFERED=1 \
@@ -20,10 +22,9 @@ ENV PYTHONUNBUFFERED=1 \
 
 ENV PATH="$POETRY_HOME/bin:$VENV_PATH/bin:$PATH"
 
-FROM minizinc/minizinc:$MINIZINC_VERSION as minizinc-base
-
-# dependency-base is used to build common dependencies
-FROM python-base as dependency-base
+COPY --from=minizinc-base /usr/local/share/minizinc /usr/local/share/minizinc
+COPY --from=minizinc-base /usr/local/bin/minizinc /usr/local/bin/minizinc
+COPY --from=minizinc-base /usr/local/bin/fzn-* /usr/local/bin
 
 RUN apt-get update \
     && apt-get install --no-install-recommends -y \
@@ -39,6 +40,9 @@ RUN wget -c https://github.com/h2oai/wave/releases/download/v$WAVE_VERSION/wave-
 # Install Poetry - respects $POETRY_VERSION & $POETRY_HOME
 ARG POETRY_VERSION
 RUN curl -sSL https://raw.githubusercontent.com/python-poetry/poetry/master/get-poetry.py | python
+
+# dependency-base is used to build common dependencies
+FROM python-base as dependency-base
 
 # We copy our Python requirements here to cache them
 # and install only runtime deps using poetry
@@ -65,8 +69,6 @@ RUN apt-get update \
     htop \
     net-tools \
     psmisc \
-    curl \
-    wget \
     rsync \
     ca-certificates \
     unzip \
@@ -107,9 +109,6 @@ RUN LATEST_COMPOSE_VERSION=$(curl -sSL "https://api.github.com/repos/docker/comp
 # Copying poetry and its virtual env 
 COPY --from=dependency-base $POETRY_HOME $POETRY_HOME
 COPY --from=dependency-base $PYSETUP_PATH $PYSETUP_PATH
-COPY --from=dependency-base $WAVE_PATH $WAVE_PATH
-COPY --from=minizinc-base /usr/local/share/minizinc /usr/local/share/minizinc
-COPY --from=minizinc-base /usr/local/bin/ /usr/local/bin/
 
 # Run Poetry full install - this will use the runtime deps from the dependency-base layer
 WORKDIR $PYSETUP_PATH
@@ -129,8 +128,3 @@ RUN sh -c "$(wget -O- https://github.com/deluan/zsh-in-docker/releases/download/
 # 'production' stage uses the clean 'python-base' stage and copyies
 # in only our runtime deps that were installed in the 'dependency-base'
 FROM python-base as prod
-
-COPY --from=dependency-base $VENV_PATH $VENV_PATH
-COPY --from=dependency-base $WAVE_PATH $WAVE_PATH
-COPY --from=minizinc-base /usr/local/share/minizinc /usr/local/share/minizinc
-COPY --from=minizinc-base /usr/local/bin/ /usr/local/bin/

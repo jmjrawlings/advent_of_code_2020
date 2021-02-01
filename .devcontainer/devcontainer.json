@@ -15,7 +15,7 @@
 
     "mounts": [
         // Mount a dedicated volume so extension to not have to be reinstalled on rebuild
-        "source=aoc2020-vscode-extensions,target=/root/.vscode-server/extensions,type=volume",
+        "source=aoc2020-ext,target=/root/.vscode-server/extensions,type=volume",
         // Mount the hosting docker engine so you can use docker inside of docker
         "source=/var/run/docker.sock,target=/var/run/docker.sock,type=bind"
     ],
