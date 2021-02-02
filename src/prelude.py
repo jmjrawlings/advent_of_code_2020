@@ -58,6 +58,33 @@ def arg(type: Type[T], val: Arg[T]) -> T:
     raise ValueError(f"Could not unpack argument {val} as {type.__name__}")
 
 
+def to_path(obj, /, must_exist=False) -> Path:
+
+    if isinstance(obj, Path):
+        path = obj
+    else:
+        path = Path(str(obj))
+
+    if must_exist and not path.exists():
+        raise ValueError(f"No existing path found at {path}")
+
+    return path
+
+
+def to_file(obj, /, must_exist=False) -> Path:
+    path = to_path(obj, must_exist)
+    if not path.is_file():
+        raise ValueError(f"Path {path} was not a file")
+    return path
+
+
+def to_dir(obj, /, must_exist=False) -> Path:
+    path = to_path(obj, must_exist)
+    if not path.is_dir():
+        raise ValueError(f"Path {path} was not a directory")
+    return path
+
+
 def to_dur(*args, **kwargs) -> Duration:
     """ Create a Duration from the given arguments """
 

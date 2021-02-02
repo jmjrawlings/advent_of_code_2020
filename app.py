@@ -152,18 +152,7 @@ async def render(q: Q, app: State):
     )
     q.page.add(
         "model",
-        # ui.form_card(
-        #     box="3 2 5 7",
-        #     items=[
-        #         ui.expander(
-        #             "blurb",
-        #             label="Blurb",
-        #             expanded=True,
-        #             items=[ui.text(app.part.blurb)],
-        #         )
-        #     ],
-        # ),
-        ui.markdown_card(box(3, 2, 5, 7), title="Blurb", content=""),
+        ui.markdown_card(box(3, 2, 5, 7), title="", content=""),
     )
     q.page.add("form", ui.vega_card(box="8 2 5 7", title="Viz", specification=c))
     await q.page.save()
@@ -231,9 +220,17 @@ async def update(q: Q, state: State):
     p = q.page["settings"]
     p.items[0].choice_group.label = title(state.day)
     p.items[0].choice_group.value = state.part_num
+    p.items[0].choice_group.disabled = state.solving
+
     p.items[2].dropdown.value = state.opts.engine.name
+    p.items[2].dropdown.disabled = state.solving
+
     p.items[4].slider.value = int(state.opts.processes)
+    p.items[4].slider.disabled = state.solving
+
     p.items[6].slider.value = int(state.opts.timeout.total_seconds())
+    p.items[6].slider.disabled = state.solving
+
     p.items[8].button.label = "Cancel" if state.solving else "Solve"
 
     p = q.page["model"]
