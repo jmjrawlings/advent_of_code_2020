@@ -123,8 +123,14 @@ ARG ZSH_THEME
 RUN sh -c "$(wget -O- https://github.com/deluan/zsh-in-docker/releases/download/v1.1.1/zsh-in-docker.sh)" -- \
     -t $ZSH_THEME \
     -p git \
-    -p docker
+    -p docker \
+    -p docker-compose \
+    -p zsh-interactive-cd
 
+# Install zsf for zsh-interactive-cd
+RUN git clone --depth 1 https://github.com/junegunn/fzf.git ~/.fzf && \
+    ~/.fzf/install
+    
 # 'production' stage uses the clean 'python-base' stage and copyies
 # in only our runtime deps that were installed in the 'dependency-base'
 FROM python-base as prod
