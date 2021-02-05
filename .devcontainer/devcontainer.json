@@ -66,8 +66,7 @@
 		"dekkerone.minizinc",
 		"aaron-bond.better-comments",
 		"njpwerner.autodocstring",
-		"ms-azuretools.vscode-docker",
-		"hediet.vscode-drawio"
+		"ms-azuretools.vscode-docker"
 	],
 
     // Wave Server + App ports
@@ -79,5 +78,6 @@
     // I don't know what this is for
     "runArgs": [
         "--init"
-    ],
+    ]
+    
 }

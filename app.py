@@ -55,7 +55,7 @@ def log_app(app: State):
 
 state = State()
 
-rows = 8
+rows = 12
 cols = 12
 
 
@@ -81,7 +81,7 @@ async def render(q: Q, app: State):
             # Place card in the header zone, regardless of viewport size.
             box=box(dy=1),
             title="Advent of Code 2020",
-            subtitle="Solution browser and interactive playground",
+            subtitle="",
             nav=[
                 ui.nav_group(
                     "Problems",
@@ -97,7 +97,7 @@ async def render(q: Q, app: State):
     q.page.add(
         "settings",
         ui.form_card(
-            box=box(1, 2, 2, 7),
+            box=box(1, 2, 2),
             items=[
                 ui.choice_group(
                     "part",
@@ -151,10 +151,22 @@ async def render(q: Q, app: State):
         .to_json()
     )
     q.page.add(
-        "model",
-        ui.markdown_card(box(3, 2, 5, 7), title="", content=""),
+        "main",
+        ui.form_card(
+            box(3, 2, 6),
+            items=[
+                ui.tabs(
+                    "tabs",
+                    items=[
+                        ui.tab("problem", "Problem", icon="Info"),
+                        ui.tab("model", "Model", icon="Code"),
+                        ui.tab("data", "Data", icon="Database"),
+                    ],
+                ),
+            ],
+        ),
     )
-    q.page.add("form", ui.vega_card(box="8 2 5 7", title="Viz", specification=c))
+    q.page.add("form", ui.vega_card(box=box(8, 2, 5), title="Viz", specification=c))
     await q.page.save()
 
 

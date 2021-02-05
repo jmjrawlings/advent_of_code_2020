@@ -1,8 +1,9 @@
 ARG MINIZINC_VERSION=2.5.3
 ARG PYTHON_VERSION=3.9
-ARG WAVE_VERSION=0.11.0
+ARG WAVE_VERSION=0.12.0
 ARG POETRY_VERSION=1.1.4
 ARG ZSH_THEME=dst
+ARG ZSH_VERSION=1.1.1
 
 FROM minizinc/minizinc:$MINIZINC_VERSION as minizinc-base
 
@@ -120,16 +121,17 @@ ENV POETRY_VIRTUALENVS_IN_PROJECT=false \
 
 # Install and set ZSH as the shell
 ARG ZSH_THEME
-RUN sh -c "$(wget -O- https://github.com/deluan/zsh-in-docker/releases/download/v1.1.1/zsh-in-docker.sh)" -- \
+ARG ZSH_VERSION
+RUN sh -c "$(wget -O- https://github.com/deluan/zsh-in-docker/releases/download/v$ZSH_VERSION/zsh-in-docker.sh)" -- \
     -t $ZSH_THEME \
     -p git \
     -p docker \
     -p docker-compose \
-    -p zsh-interactive-cd
+    -p zsh-interactive-cd 
 
 # Install zsf for zsh-interactive-cd
-RUN git clone --depth 1 https://github.com/junegunn/fzf.git ~/.fzf && \
-    ~/.fzf/install
+RUN git clone --depth 1 https://github.com/junegunn/fzf.git ~/.fzf \
+    && ~/.fzf/install
     
 # 'production' stage uses the clean 'python-base' stage and copyies
 # in only our runtime deps that were installed in the 'dependency-base'
