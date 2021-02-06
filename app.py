@@ -42,6 +42,14 @@ class State(Base):
         else:
             return self.day.part_2
 
+    @property
+    def part_1(self):
+        return self.day.part_1
+
+    @property
+    def part_2(self):
+        return self.day.part_2
+
 
 def log_args(q: Q):
     for k, v in q.args.__dict__["__kv"].items():
@@ -94,7 +102,7 @@ async def render(q: Q, app: State):
         ),
     )
 
-    q.page.add(
+    app.settings = q.page.add(
         "settings",
         ui.form_card(
             box=box(1, 2, 2),
@@ -153,7 +161,7 @@ async def render(q: Q, app: State):
     q.page.add(
         "main",
         ui.form_card(
-            box(3, 2, 6),
+            box(3, 2, 5),
             items=[
                 ui.tabs(
                     "tabs",
@@ -163,10 +171,11 @@ async def render(q: Q, app: State):
                         ui.tab("data", "Data", icon="Database"),
                     ],
                 ),
+                ui.text_m(""),
             ],
         ),
     )
-    q.page.add("form", ui.vega_card(box=box(8, 2, 5), title="Viz", specification=c))
+    q.page.add("viz", ui.vega_card(box=box(8, 2, 5), title="Viz", specification=c))
     await q.page.save()
 
 
@@ -189,84 +198,86 @@ async def solvex(q: Q, state: State, debounce=100):
     await update(q, state)
 
 
-async def sync(q: Q, state: State):
+async def sync(q: Q, app: State):
+    """
+    Sync the application state with the client
+    """
+
     log_args(q)
 
     if q.args.day:
-        state.day_num = q.args.day
+        app.day_num = q.args.day
     if q.args.part:
-        state.part_num = q.args.part
+        app.part_num = q.args.part
     if q.args.engine:
-        state.opts.engine = q.args.engine
+        app.opts.engine = q.args.engine
     if q.args.processes:
-        state.opts.processes = q.args.processes
+        app.opts.processes = q.args.processes
     if q.args.timeout:
-        state.opts.timeout = to_dur(seconds=q.args.timeout)
+        app.opts.timeout = to_dur(seconds=q.args.timeout)
 
-    state.part_num = 1 if q.args.part == 1 else 2
+    app.part_num = 1 if q.args.part == 1 else 2
 
     if "#" in q.args:
         x = str(q.args["#"])
         if x.isnumeric():
-            state.day_num = int(x)
+            app.day_num = int(x)
 
-    if q.args.solve and not state.solving:
-        state.solving = True
-        task = asyncio.ensure_future(solvex(q, state))
-        state.solve = task
+    if q.args.solve and not app.solving:
+        app.solving = True
+        task = asyncio.ensure_future(solvex(q, app))
+        app.solve = task
         return
 
-    if q.args.solve and state.solving and state.solve:
+    if q.args.solve and app.solving and app.solve:
         log.error(f"Cancelling solver")
-        state.solving = False
-        state.solve.cancel()
-        state.solve = None
+        app.solving = False
+        app.solve.cancel()
+        app.solve = None
         return
 
 
-async def update(q: Q, state: State):
-
-    # p.items[0].choice_group.value = state.day_num
-    # p.items[2].choice_group.value = state.part_num
+async def update(q: Q, app: State):
 
     p = q.page["settings"]
-    p.items[0].choice_group.label = title(state.day)
-    p.items[0].choice_group.value = state.part_num
-    p.items[0].choice_group.disabled = state.solving
 
-    p.items[2].dropdown.value = state.opts.engine.name
-    p.items[2].dropdown.disabled = state.solving
+    p.items[0].choice_group.label = title(app.day)
+    p.items[0].choice_group.value = app.part_num
+    p.items[0].choice_group.disabled = app.solving
 
-    p.items[4].slider.value = int(state.opts.processes)
-    p.items[4].slider.disabled = state.solving
+    p.items[2].dropdown.value = app.opts.engine.name
+    p.items[2].dropdown.disabled = app.solving
 
-    p.items[6].slider.value = int(state.opts.timeout.total_seconds())
-    p.items[6].slider.disabled = state.solving
+    p.items[4].slider.value = int(app.opts.processes)
+    p.items[4].slider.disabled = app.solving
 
-    p.items[8].button.label = "Cancel" if state.solving else "Solve"
+    p.items[6].slider.value = int(app.opts.timeout.total_seconds())
+    p.items[6].slider.disabled = app.solving
 
-    p = q.page["model"]
+    p.items[8].button.label = "Cancel" if app.solving else "Solve"
+
+    p = q.page["header"]
+    p.title = f"Advent of Code 2020 - Day {app.day.num} - {app.day.title}"
+
+    p = q.page["main"]
     wrapper = textwrap.TextWrapper(
-        width=70, break_long_words=False, replace_whitespace=False
+        width=80, break_long_words=False, replace_whitespace=False
     )
-    if state.part_num == 1:
-        text = state.part.blurb
-    else:
-        text = state.day.part_1.blurb + "\n\n" + state.day.part_2.blurb
+    txt = f"## Part 1\n\n" + app.part_1.blurb
+    if app.part_num == 2:
+        txt += f"\n\n## Part 2\n\n{app.part_2.blurb}"
 
-    text = textwrap.dedent(text)
+    text = textwrap.dedent(txt)
     text = "\n".join(wrapper.wrap(text))
-    p.content = text
-    p.title = state.part.title
-    # "\r".join(textwrap.wrap(state.part.blurb, width=80)).replace("\t", " ")
-    # p.title = state.part.title
+    text += 
+
+    p.items[1].text_m.content = text
 
     await q.page.save()
 
 
 @app("/app")
 async def serve(q: Q):
-
     await sync(q, state)
     await render(q, state)
     await update(q, state)
