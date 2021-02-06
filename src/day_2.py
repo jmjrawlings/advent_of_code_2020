@@ -1030,9 +1030,10 @@ class Day2(Day[Data]):
     title = "Password Philosophy"
     input = input
 
-    def data(self, lines):
+    @property
+    def data(self):
         data = Data()
-        for line in lines:
+        for line in self.lines:
             a, b, password = line.split()
             lower, upper = a.split("-")
             char = b[0]
@@ -1112,8 +1113,7 @@ class Part1(Part[Data]):
             passwords.append(password)
             chars.append(char2num[char])
 
-        return dict(
-            model=self.model,
+        args = dict(
             lowers=data.lower,
             uppers=data.upper,
             passwords=passwords,
@@ -1121,6 +1121,8 @@ class Part1(Part[Data]):
             rows=rows,
             cols=cols,
         )
+
+        return self.model, args
 
 
 class Part2(Part[Data]):
@@ -1189,8 +1191,7 @@ class Part2(Part[Data]):
         for c in data.char:
             chars.append(char2num[c])
 
-        return dict(
-            model=self.model,
+        args = dict(
             first_index=data.lower,
             second_index=data.upper,
             passwords=passwords,
@@ -1198,6 +1199,7 @@ class Part2(Part[Data]):
             rows=rows,
             cols=cols,
         )
+        return self.model, args
 
 
 register(Day2, Part1, Part2)

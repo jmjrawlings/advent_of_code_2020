@@ -344,15 +344,16 @@ class Day3(Day[Data]):
     title = "Toboggan Trajectory"
     input = input
 
-    def data(self, lines):
+    @property
+    def data(self):
 
         map = []
-        for line in lines:
+        for line in self.lines:
             row = [int(x == "#") for x in line]
             map.append(row)
 
         y1 = len(map)
-        x1 = len(lines[0])
+        x1 = len(next(self.lines))
         map = map
         return Data(map=map, x1=x1, y1=y1)
 
@@ -453,7 +454,8 @@ class Part1(Part[Data]):
         """
 
     def formulate(self, data: Data):
-        return dict(model=self.model, map=data.map, x1=data.x1, y1=data.y1, dx=3, dy=1)
+        args = dict(map=data.map, x1=data.x1, y1=data.y1, dx=3, dy=1)
+        return self.model, args
 
 
 class Part2(Part[Data]):

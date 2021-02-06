@@ -22,6 +22,8 @@ from typing import (
 
 import attr
 import pendulum as pn
+import cattr
+import json
 from logzero import setup_logger
 from minizinc import Instance, Model, Result, Solver, Status
 from pendulum import (
@@ -283,7 +285,7 @@ root = Path(__file__).parent.parent
 log = setup_logger(__name__)
 
 
-E = TypeVar("E", bound=Enum)
+E = TypeVar("E", bound="Enumeration")
 
 
 class Base:
@@ -469,16 +471,13 @@ class Day(Generic[T]):
     def __init__(self):
         self.log = setup_logger(self.name)
 
-    def data(self, lines: List[str]) -> T:
+    @property
+    def data(self) -> T:
         """
         Load the problem instance from the lines
         of the input file
         """
         raise NotImplementedError()
-
-    @property
-    def dir(self) -> Path:
-        return root / "src" / self.name
 
     @property
     def name(self):
@@ -489,6 +488,10 @@ class Day(Generic[T]):
         for line in self.input.split("\n"):
             if line:
                 yield line.strip()
+
+    @property
+    def parts(self):
+        return [self.part_1, self.part_2]
 
 
 parts: Dict[Tuple[int, int], "Part"] = {}
@@ -528,11 +531,7 @@ class Part(Generic[T]):
         start_time = now()
         code = f"D{self.day.num}P{self.num}"
         log.info(f"{code} solve start")
-
-        if data is None:
-            lines = list(self.day.lines)
-            data = self.day.data(lines)
-
+        data = data or self.day.data
         answer = await self.answer(data, opts)
         log.info(f"{code} returned {answer} in {to_elapsed(now() - start_time)}")
         return answer

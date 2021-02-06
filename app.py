@@ -12,20 +12,20 @@ def title(day: Day):
 
 
 class Tab(Enumeration):
-    part_1 = auto()
-    part_2 = auto()
-    input = auto()
+    problem = auto()
+    model = auto()
+    data = auto()
 
 
 @attr.s
-class State(Base):
+class App(Base):
 
     # fmt:off
     init    : bool      = attr.ib(default=False)
     day_num : int       = attr.ib(default=1)
     part_num: int       = attr.ib(default=1)
     opts    : SolveOpts = attr.ib(factory = SolveOpts)
-    tab     : Tab       = attr.ib(default=Tab.part_1, converter=Tab.parse) # type:ignore
+    tab     : Tab       = attr.ib(default=Tab.problem, converter=Tab.parse) # type:ignore
     solving : bool      = attr.ib(default=False)
     answer  : int       = attr.ib(default=0)
     solve   : Optional[Future[None]] = attr.ib(default=None)
@@ -56,12 +56,12 @@ def log_args(q: Q):
         log.debug(f"arg {k}:{type(v).__name__} = {v}")
 
 
-def log_app(app: State):
+def log_app(app: App):
     for k, v in app.__dict__.items():
         log.info(f"app {k}:{type(v).__name__} = {v}")
 
 
-state = State()
+state = App()
 
 rows = 12
 cols = 12
@@ -75,13 +75,13 @@ def box(x0=1, y0=1, dx=cols, dy=rows, x1=None, y1=None):
     return f"{x0} {y0} {dx} {dy}"
 
 
-async def render(q: Q, app: State):
+async def render(q: Q, app: App):
     if app.init:
         return
 
     app.init = True
 
-    q.page.add("meta", ui.meta_card(box="", title="Advent of Code 2020"))
+    q.page.add("meta", ui.meta_card(box="", title=""))
 
     q.page.add(
         "header",
@@ -164,12 +164,13 @@ async def render(q: Q, app: State):
             box(3, 2, 5),
             items=[
                 ui.tabs(
-                    "tabs",
+                    "tab",
                     items=[
                         ui.tab("problem", "Problem", icon="Info"),
                         ui.tab("model", "Model", icon="Code"),
                         ui.tab("data", "Data", icon="Database"),
                     ],
+                    value="problem",
                 ),
                 ui.text_m(""),
             ],
@@ -179,7 +180,7 @@ async def render(q: Q, app: State):
     await q.page.save()
 
 
-async def solvex(q: Q, state: State, debounce=100):
+async def solvex(q: Q, state: App, debounce=100):
 
     lines = list(state.day.lines)
     data = state.day.data(lines)
@@ -198,7 +199,7 @@ async def solvex(q: Q, state: State, debounce=100):
     await update(q, state)
 
 
-async def sync(q: Q, app: State):
+async def sync(q: Q, app: App):
     """
     Sync the application state with the client
     """
@@ -215,6 +216,8 @@ async def sync(q: Q, app: State):
         app.opts.processes = q.args.processes
     if q.args.timeout:
         app.opts.timeout = to_dur(seconds=q.args.timeout)
+    if q.args.tab:
+        app.tab = q.args.tab
 
     app.part_num = 1 if q.args.part == 1 else 2
 
@@ -237,8 +240,9 @@ async def sync(q: Q, app: State):
         return
 
 
-async def update(q: Q, app: State):
+async def update(q: Q, app: App):
 
+    q.page["meta"].theme = "light"
     p = q.page["settings"]
 
     p.items[0].choice_group.label = title(app.day)
@@ -260,16 +264,27 @@ async def update(q: Q, app: State):
     p.title = f"Advent of Code 2020 - Day {app.day.num} - {app.day.title}"
 
     p = q.page["main"]
-    wrapper = textwrap.TextWrapper(
-        width=80, break_long_words=False, replace_whitespace=False
-    )
-    txt = f"## Part 1\n\n" + app.part_1.blurb
-    if app.part_num == 2:
-        txt += f"\n\n## Part 2\n\n{app.part_2.blurb}"
+    p.items[0].tabs.value = app.tab.name
 
-    text = textwrap.dedent(txt)
-    text = "\n".join(wrapper.wrap(text))
-    text += 
+    if app.tab == Tab.problem:
+        wrapper = textwrap.TextWrapper(
+            width=80, break_long_words=False, replace_whitespace=False
+        )
+        txt = f"## Part 1\n\n" + app.part_1.blurb
+        if app.part_num == 2:
+            txt += f"\n\n## Part 2\n\n{app.part_2.blurb}"
+
+        text = textwrap.dedent(txt)
+        text = "\n".join(wrapper.wrap(text))
+
+    elif app.tab == Tab.model:
+        data = app.day.data
+        model, params = app.part.formulate(data)
+        text = model
+
+    else:
+        data = app.day.data
+        text = json.dumps(cattr.unstructure(data), indent=4).replace("\n", "\n\n")
 
     p.items[1].text_m.content = text
 

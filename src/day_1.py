@@ -224,8 +224,9 @@ class Day1(Day[Data]):
     title = "Report Repair"
     input = input
 
-    def data(self, lines):
-        return Data([int(x) for x in lines])
+    @property
+    def data(self):
+        return Data([int(x) for x in self.lines])
 
 
 class Part1(Part[Data]):
@@ -278,7 +279,7 @@ class Part1(Part[Data]):
     """
 
     def formulate(self, data: Data):
-        return dict(model=self.model, xs=data.nums, N=data.count, target=data.target)
+        return self.model, dict(xs=data.nums, N=data.count, target=data.target)
 
 
 class Part2(Part[Data]):
@@ -315,7 +316,7 @@ class Part2(Part[Data]):
     """
 
     def formulate(self, data):
-        return dict(model=self.model, xs=data.nums, N=data.count, target=data.target)
+        return self.model, dict(xs=data.nums, N=data.count, target=data.target)
 
 
 register(Day1, Part1, Part2)
